@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+src/agentic_os/__init__.py
+src/agentic_os/__main__.py
+src/agentic_os/cli.py
+src/agentic_os/config.py
+src/agentic_os.egg-info/PKG-INFO
+src/agentic_os.egg-info/SOURCES.txt
+src/agentic_os.egg-info/dependency_links.txt
+src/agentic_os.egg-info/entry_points.txt
+src/agentic_os.egg-info/requires.txt
+src/agentic_os.egg-info/top_level.txt
+tests/test_skeleton.py
