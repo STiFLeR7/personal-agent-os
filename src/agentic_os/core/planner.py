@@ -115,27 +115,44 @@ class PlannerAgent(StatefulAgent):
         request = task.user_request.lower().strip()
 
         # Rule-based task routing - check more specific patterns first
-        # Check for file/directory listing operations
-        if any(word in request for word in ["list", "files", "directory", "dir", "show files", "share file", "file names", "files in"]):
+        # Notes operations
+        if any(word in request for word in ["note", "notes", "save", "remember"]):
+            if any(word in request for word in ["list", "show", "all"]):
+                return await self._plan_list_notes(task)
+            else:
+                return await self._plan_take_note(task)
+
+        # Reminders and scheduling
+        elif any(word in request for word in ["remind", "reminder", "alarm", "schedule"]):
+            if any(word in request for word in ["list", "show", "all"]):
+                return await self._plan_list_reminders(task)
+            else:
+                return await self._plan_set_reminder(task)
+
+        # File operations
+        elif any(word in request for word in ["read", "show", "display", "content", "view"]) and ("file" in request or "." in request):
+            return await self._plan_read_file(task)
+
+        elif any(word in request for word in ["write", "save", "create", "edit"]) and ("file" in request or ".txt" in request):
+            return await self._plan_write_file(task)
+
+        # File/directory listing operations
+        elif any(word in request for word in ["list", "files", "directory", "dir", "show files", "share file", "file names", "files in"]):
             return await self._plan_list_files(task)
 
-        # Check for browser/application opening (must check before generic "open")
-        elif any(word in request for word in ["chrome", "firefox", "browser", "edge", "explorer"]):
+        # Browser/application opening (must check before generic "open")
+        elif any(word in request for word in ["chrome", "firefox", "browser", "edge", "explorer", "navigate", "website", "url", "http"]):
             return await self._plan_open_application(task)
 
-        # Check for settings/preferences (more specific)
+        # Settings/preferences (more specific)
         elif any(word in request for word in ["settings", "preferences", "config"]):
             return await self._plan_open_settings(task)
 
-        # Check for email operations
+        # Email operations (stubs for now)
         elif any(
-            word in request for word in ["write", "send", "email", "message"]
+            word in request for word in ["write", "send", "email", "message", "gmail"]
         ):
-            return await self._plan_send_email(task)
-
-        # Check for file reading (must come after list operations)
-        elif any(word in request for word in ["read", "show", "display", "content"]) and "file" in request:
-            return await self._plan_read_file(task)
+            return self._plan_send_email_stub(task)
 
         else:
             # Fallback: create a simple generic task
@@ -225,69 +242,6 @@ class PlannerAgent(StatefulAgent):
             created_by=self.agent_id,
         )
 
-    async def _plan_send_email(self, task: TaskDefinition) -> ExecutionPlan:
-        """Create a plan to send an email."""
-        steps = [
-            PlanStep(
-                id=uuid4(),
-                order=1,
-                description="Compose email",
-                tool_name="email_compose",
-                tool_args={
-                    "recipient": task.context.get("recipient", ""),
-                    "subject": task.context.get("subject", ""),
-                    "body": task.context.get("body", task.user_request),
-                },
-            ),
-            PlanStep(
-                id=uuid4(),
-                order=2,
-                description="Send email",
-                tool_name="email_send",
-                tool_args={},
-                depends_on=[steps[0].id] if steps else [],
-            ),
-        ]
-
-        return ExecutionPlan(
-            id=uuid4(),
-            task_id=task.id,
-            steps=steps,
-            reasoning="User requested to send an email. Plan includes composing and sending.",
-            confidence=0.85,
-            created_by=self.agent_id,
-        )
-
-    async def _plan_read_file(self, task: TaskDefinition) -> ExecutionPlan:
-        """Create a plan to read a file."""
-        file_path = task.context.get("file_path", "")
-
-        # Use type command on Windows, cat on Unix
-        import sys
-        if sys.platform == "win32":
-            command = f"type {file_path}"
-        else:
-            command = f"cat {file_path}"
-
-        steps = [
-            PlanStep(
-                id=uuid4(),
-                order=1,
-                description=f"Read file: {file_path}",
-                tool_name="shell_command",
-                tool_args={"command": command},
-            )
-        ]
-
-        return ExecutionPlan(
-            id=uuid4(),
-            task_id=task.id,
-            steps=steps,
-            reasoning=f"User requested to read {file_path}.",
-            confidence=0.9,
-            created_by=self.agent_id,
-        )
-
     async def _plan_list_files(self, task: TaskDefinition) -> ExecutionPlan:
         """Create a plan to list files."""
         request = task.user_request
@@ -346,6 +300,208 @@ class PlannerAgent(StatefulAgent):
             task_id=task.id,
             steps=steps,
             reasoning=f"Generic plan for: {task.user_request}",
+            confidence=0.5,
+            created_by=self.agent_id,
+        )
+
+    async def _plan_take_note(self, task: TaskDefinition) -> ExecutionPlan:
+        """Create a plan to take a note."""
+        request = task.user_request
+        # Simple extraction: "note: [title] - [content]"
+        title = task.context.get("title", "Note")
+        content = task.context.get("content", request)
+
+        steps = [
+            PlanStep(
+                id=uuid4(),
+                order=1,
+                description="Save note",
+                tool_name="note_create",
+                tool_args={
+                    "title": title,
+                    "content": content,
+                    "tags": task.context.get("tags", ""),
+                },
+            )
+        ]
+
+        return ExecutionPlan(
+            id=uuid4(),
+            task_id=task.id,
+            steps=steps,
+            reasoning="User wants to save a note.",
+            confidence=0.85,
+            created_by=self.agent_id,
+        )
+
+    async def _plan_list_notes(self, task: TaskDefinition) -> ExecutionPlan:
+        """Create a plan to list notes."""
+        search_term = task.context.get("search_term", "")
+
+        steps = [
+            PlanStep(
+                id=uuid4(),
+                order=1,
+                description="List notes",
+                tool_name="note_list",
+                tool_args={"search_term": search_term},
+            )
+        ]
+
+        return ExecutionPlan(
+            id=uuid4(),
+            task_id=task.id,
+            steps=steps,
+            reasoning="User wants to see their notes.",
+            confidence=0.9,
+            created_by=self.agent_id,
+        )
+
+    async def _plan_set_reminder(self, task: TaskDefinition) -> ExecutionPlan:
+        """Create a plan to set a reminder."""
+        message = task.context.get("message", task.user_request)
+        time = task.context.get("time", "1h")  # Default to 1 hour
+        priority = task.context.get("priority", "normal")
+
+        steps = [
+            PlanStep(
+                id=uuid4(),
+                order=1,
+                description=f"Set reminder: {message}",
+                tool_name="reminder_set",
+                tool_args={
+                    "message": message,
+                    "time": time,
+                    "priority": priority,
+                },
+            )
+        ]
+
+        return ExecutionPlan(
+            id=uuid4(),
+            task_id=task.id,
+            steps=steps,
+            reasoning="User wants to set a reminder.",
+            confidence=0.85,
+            created_by=self.agent_id,
+        )
+
+    async def _plan_list_reminders(self, task: TaskDefinition) -> ExecutionPlan:
+        """Create a plan to list reminders."""
+        steps = [
+            PlanStep(
+                id=uuid4(),
+                order=1,
+                description="List reminders",
+                tool_name="reminder_list",
+                tool_args={"filter_status": "active"},
+            )
+        ]
+
+        return ExecutionPlan(
+            id=uuid4(),
+            task_id=task.id,
+            steps=steps,
+            reasoning="User wants to see active reminders.",
+            confidence=0.9,
+            created_by=self.agent_id,
+        )
+
+    async def _plan_write_file(self, task: TaskDefinition) -> ExecutionPlan:
+        """Create a plan to write to a file."""
+        file_path = task.context.get("file_path", "notes.txt")
+        content = task.context.get("content", task.user_request)
+
+        steps = [
+            PlanStep(
+                id=uuid4(),
+                order=1,
+                description=f"Write to file: {file_path}",
+                tool_name="file_write",
+                tool_args={
+                    "file_path": file_path,
+                    "content": content,
+                    "create_parents": True,
+                },
+            )
+        ]
+
+        return ExecutionPlan(
+            id=uuid4(),
+            task_id=task.id,
+            steps=steps,
+            reasoning=f"User wants to write content to {file_path}.",
+            confidence=0.88,
+            created_by=self.agent_id,
+        )
+
+    async def _plan_read_file(self, task: TaskDefinition) -> ExecutionPlan:
+        """Create a plan to read a file."""
+        file_path = task.context.get("file_path", "")
+
+        # Extract file path from request if not in context
+        if not file_path:
+            import re
+            # Match file paths and filenames (including extensions)
+            # Priority: absolute paths, then filenames with extensions, then words
+            patterns = [
+                r'[A-Za-z]:[\\/][^\s]*',  # Windows absolute paths
+                r'/[\S]*',                 # Unix absolute paths  
+                r'\./[\S]*',               # Relative paths with ./
+                r'[\w\-\.]+\.\w{2,}',      # Files with extensions (README.md, file.txt)
+            ]
+            
+            for pattern in patterns:
+                match = re.search(pattern, task.user_request)
+                if match:
+                    file_path = match.group(0).strip()
+                    logger.debug(f"Extracted file path from request: {file_path}")
+                    break
+
+        # Default if nothing found
+        if not file_path:
+            file_path = "."
+
+        steps = [
+            PlanStep(
+                id=uuid4(),
+                order=1,
+                description=f"Read file: {file_path}",
+                tool_name="file_read",
+                tool_args={"file_path": file_path, "encoding": "utf-8"},
+            )
+        ]
+
+        return ExecutionPlan(
+            id=uuid4(),
+            task_id=task.id,
+            steps=steps,
+            reasoning=f"User requested to read {file_path}.",
+            confidence=0.9,
+            created_by=self.agent_id,
+        )
+
+    def _plan_send_email_stub(self, task: TaskDefinition) -> ExecutionPlan:
+        """Create a stub plan for email (to be implemented in v0.3)."""
+        steps = [
+            PlanStep(
+                id=uuid4(),
+                order=1,
+                description="Compose email",
+                tool_name="email_compose",
+                tool_args={
+                    "recipient": task.context.get("recipient", ""),
+                    "subject": task.context.get("subject", ""),
+                    "body": task.context.get("body", task.user_request),
+                },
+            )
+        ]
+
+        return ExecutionPlan(
+            id=uuid4(),
+            task_id=task.id,
+            steps=steps,
+            reasoning="Gmail integration coming in v0.3",
             confidence=0.5,
             created_by=self.agent_id,
         )

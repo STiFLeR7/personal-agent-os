@@ -3,9 +3,9 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agentic-os"
-version = "0.1.0"
-description = "Personal Extensible AI Operator - A production-grade local-first agentic system"
+name = "dex"
+version = "0.2.0"
+description = "Dex - Your Personal AI Operator. Local-first, privacy-focused task automation."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -71,7 +71,8 @@ Repository = "https://github.com/STiFLeR7/personal-agent-os.git"
 Issues = "https://github.com/STiFLeR7/personal-agent-os/issues"
 
 [project.scripts]
-agentic-os = "agentic_os.cli:main"
+dex = "agentic_os.cli:main"
+agentic-os = "agentic_os.cli:main"  # Backward compatibility
 
 [tool.setuptools]
 packages = ["agentic_os"]

@@ -12,6 +12,24 @@ from pydantic import ConfigDict, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+class DexIdentity(BaseSettings):
+    """Configuration for Dex agent identity and voice integration."""
+
+    model_config = SettingsConfigDict(env_prefix="DEX_")
+
+    name: str = Field(default="Dex", description="Agent name (voice wake word)")
+    voice_enabled: bool = Field(default=False, description="Enable voice input/output")
+    voice_language: str = Field(default="en-US", description="Voice language for STT/TTS")
+    wake_word: str = Field(default="Hey Dex", description="Voice wake phrase")
+    personality: str = Field(
+        default="helpful and efficient",
+        description="Agent personality description for LLM context",
+    )
+    reminders_enabled: bool = Field(default=True, description="Enable reminder functionality")
+    notes_enabled: bool = Field(default=True, description="Enable note-taking")
+    time_zone: str = Field(default="UTC", description="Time zone for reminders and scheduling")
+
+
 class LLMConfig(BaseSettings):
     """Configuration for LLM inference."""
 
@@ -108,6 +126,7 @@ class Settings(BaseSettings):
     )
 
     # Subsystem configs
+    dex: DexIdentity = Field(default_factory=DexIdentity)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)

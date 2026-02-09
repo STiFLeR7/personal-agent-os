@@ -73,7 +73,7 @@ class VerifierAgent(StatefulAgent):
             else:
                 logger.warning(f"✗ Task {task_id} verification failed: {verification.issues}")
 
-            # Broadcast verification result
+            # Broadcast verification result with execution results
             await self._send_broadcast(
                 MessageType.VERIFY_RESPONSE,
                 {
@@ -82,6 +82,8 @@ class VerifierAgent(StatefulAgent):
                     "verified": verification.verified,
                     "issues": verification.issues,
                     "recommendations": verification.recommendations,
+                    "results": results,  # Pass through tool outputs
+                    "execution_trace": execution_trace,
                 },
             )
 

@@ -1,0 +1,3 @@
+[console_scripts]
+agentic-os = agentic_os.cli:main
+dex = agentic_os.cli:main

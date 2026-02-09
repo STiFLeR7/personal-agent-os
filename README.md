@@ -1,270 +1,299 @@
-# Agentic OS - Personal Extensible AI Operator
+# 🤖 Dex - Your Personal AI Operator
 
-A production-grade local-first agentic system designed to act as a personal AI control plane for autonomous task execution, planning, and verification.
+A production-grade **local-first** AI agent system that helps you get things done through intelligent task planning, execution, and verification. Designed to listen, remember, and assist.
+
+**"Hey Dex!"** — Voice activation support coming in Phase 3.5
 
 ## Overview
 
-Agentic OS is a comprehensive framework for building autonomous AI agents that:
+Dex is a personal AI control plane that:
 
-- **Accept multiple input types**: voice, text, keyboard commands, and optional screen understanding
-- **Reason autonomously**: Multi-step task planning with self-verification
-- **Execute real-world actions**: Standardized tool interfaces for browser, email, file systems, datasets, calendars
-- **Coordinate agents**: Message-driven architecture with planner, executor, and verifier agents
-- **Operate locally**: Optimized for consumer hardware with quantized models and efficient inference
-- **Maintain determinism**: Full execution tracing and debuggability
+- **Accepts tasks** via text commands (voice coming soon)
+- **Remembers everything** - notes, reminders, and task history
+- **Executes actions** - file operations, reminders, notes, shell commands
+- **Reasons through problems** - decomposes tasks into executable steps
+- **Works locally** - no cloud dependency, fully privacy-focused
+- **Stays transparent** - shows you exactly what it's doing and where it saved things
+
+## Quick Feature Tour
+
+### 📌 Reminders
+```bash
+dex run "remind me to call mom tomorrow at 3pm"
+dex run "set a reminder for the meeting in 2 hours"
+dex run "show all my reminders"
+```
+
+### 📝 Notes
+```bash
+dex run "take a note about the project deadline"
+dex run "save this idea: build a better AI assistant"
+dex run "show all my notes"
+```
+
+### 📁 File Operations
+```bash
+dex run "read README.md"
+dex run "list files in D:/projects/"
+dex run "write this to my-notes.txt"
+```
+
+### 🖥️ System Control
+```bash
+dex run "open chrome"
+dex run "open settings"
+dex run "list files in the current directory"
+```
 
 ## Architecture
 
-The system is organized into five layers:
+Dex operates in **5 architectural layers**:
 
-### 1. Input & Perception Layer
-- Text input via CLI and UI
-- Keyboard command mode
-- Optional voice input (STT)
-- Screen understanding via OCR/vision models (user-triggered only)
+### 1. Input & Perception Layer ✅
+- **Text input** via CLI and interactive mode
+- **Voice ready** (STT/TTS in Phase 3.5)
+- Foundation for future multi-modal input
 
-### 2. Agentic Core (Decision Layer)
-- Goal understanding and natural language interpretation
-- Task decomposition into executable steps
-- Planning loops with iterative refinement
-- Self-verification and error correction
-- Stateful memory for context management
+### 2. Decision Layer (Agentic Core) ✅
+- **PlannerAgent**: Understands tasks and creates execution plans
+- **ExecutorAgent**: Runs the plan by invoking tools
+- **VerifierAgent**: Validates that the task succeeded
 
-### 3. Tool Interface Layer (MCP-style)
-Standardized adapters for:
-- Browser automation (Selenium/Chrome)
-- Gmail interaction (Google APIs)
-- File system operations
-- Dataset inspection (CSV, Pandas)
-- Calendar and reminders
-- Extensible for custom tools
+### 3. Tool Interface Layer ✅
+Unified tool abstraction with:
+- **ShellCommandTool** - Execute system commands
+- **FileReadTool** - Read file contents
+- **FileWriteTool** - Create/write files
+- **NoteCreateTool** - Save timestamped notes
+- **NoteListTool** - Search and list notes
+- **ReminderSetTool** - Create time-based reminders
+- **ReminderListTool** - View active reminders
+- Stubs ready for: Gmail, Browser, Calendar
 
-### 4. Coordination Layer (ACP-style)
-Message-driven inter-agent communication with:
-- **Planner Agent**: Decomposes tasks into execution plans
-- **Executor Agent**: Invokes tools and manages execution
-- **Verifier Agent**: Validates outcomes against requirements
-- Optional specialist agents (data analysis, scheduling, etc.)
+### 4. Coordination Layer ✅
+Message-driven architecture:
+- Async message bus for inter-agent communication
+- Request-response pattern with correlation tracking
+- Full execution history and observability
 
-### 5. Interoperability Layer (A2A-ready)
-Foundation for future agent-to-agent communication:
-- Agent identity and discovery
-- Permission scoping
-- Message validation
-- Remote execution support (future)
+### 5. Interoperability Layer ✅
+Foundation for future agent-to-agent communication
 
-## Quick Start
-
-### Installation
+## Installation
 
 ```bash
 # Clone the repository
 git clone https://github.com/STiFLeR7/personal-agent-os.git
 cd personal-agent-os
 
-# Install in development mode
+# Install
 pip install -e .
 
-# Or install with all optional dependencies
-pip install -e ".[all]"
+# Verify installation
+dex --version
 ```
 
-### Configuration
+## Configuration
 
-Create a `.env` file in the project root:
+Create/edit `.env` file:
 
-```bash
-# LLM Configuration
-LLM_PROVIDER=ollama
-LLM_MODEL_NAME=mistral
-LLM_BASE_URL=http://localhost:11434
+```env
+# Dex Identity
+DEX_NAME=Dex
+DEX_WAKE_WORD="Hey Dex"
+DEX_TIME_ZONE=America/New_York
+
+# Features
+DEX_VOICE_ENABLED=false           # Enable in Phase 3.5
+DEX_REMINDERS_ENABLED=true
+DEX_NOTES_ENABLED=true
 
 # Logging
 LOG_LEVEL=INFO
-LOG_FILE=.agentic_os/logs/system.log
-
-# Agent Settings
-AGENT_PLANNING_DEPTH=5
-AGENT_VERIFICATION_ENABLED=true
-
-# Debug Mode
+LOG_FILE=.agentic_os/logs/dex.log
 DEBUG_MODE=false
 ```
 
-### First Run
+## Usage Examples
+
+### Example 1: Setting a Reminder
 
 ```bash
-# Initialize the system
-agentic-os init
+$ dex run "remind me to check emails at 5pm"
 
-# Run diagnostics
-agentic-os test
+✓ TASK EXECUTION COMPLETE
 
-# Check status
-agentic-os status
+═══ RESULTS ═══
 
-# View configuration
-agentic-os config
+📌 Reminder Set
+   ID: rem-1770617171.457489
+   Scheduled: 2026-02-09T17:00:00+00:00
+   In: 10h 53m
+
+[✓ OK] Verification passed
 ```
 
-## Usage
-
-### Running a Task
+### Example 2: Taking a Note
 
 ```bash
-# CLI mode with specific task
-agentic-os run "open settings"
-agentic-os run "list files in directory"
+$ dex run "take a note: buy groceries - milk, eggs, bread"
 
-# Interactive mode
-agentic-os run
-Enter task: show me the README
+✓ TASK EXECUTION COMPLETE
+
+═══ RESULTS ═══
+
+📝 Note Saved
+   ID: 2026-02-09t06-05-22-note
+   File: D:\personal-agent-os\.agentic_os\notes\2026-02-09t06-05-22-note.md
+   Created: 2026-02-09T06:05:22.052401+00:00
+
+[✓ OK] Verification passed
 ```
 
-### Task Types Supported
-
-The system currently has rule-based planning for common task types:
-
-- **Settings**: "open settings", "open preferences"
-- **File Operations**: "list files", "show directory"
-- **Email**: "send email", "write message"
-- **Generic Tasks**: Any other task (requires generic_command tool)
-
-### System Output
-
-When you run a task, you'll see:
-
-```
-Running: open settings
-
-Agents initialized
-Plan request sent
-
-TASK EXECUTION COMPLETE
-
-[OK] Verification passed
-```
-
-The system:
-1. **Initializes agents** (Planner, Executor, Verifier)
-2. **Creates a plan** based on the task type
-3. **Executes the plan** using registered tools
-4. **Verifies the results** for correctness
-5. **Reports the outcome**
-
-### Viewing System State
+### Example 3: Listing Reminders
 
 ```bash
-# Check system status
-agentic-os status
+$ dex run "show all my reminders"
 
-# List agents in the system
-agentic-os agents
+✓ TASK EXECUTION COMPLETE
 
-# View configuration
-agentic-os config
+═══ RESULTS ═══
 
-# Run diagnostics
-agentic-os test
+📋 Reminders List
+   Found 2 reminders:
+     • remind me to call mom tomorrow at 3pm @ 2026-02-10T15:00:00+00:00
+     • check emails at 5pm @ 2026-02-09T17:00:00+00:00
+
+[✓ OK] Verification passed
 ```
 
-### Debug Mode
-
-For detailed execution logs:
+### Example 4: Reading Files
 
 ```bash
-agentic-os --debug run "open settings"
+$ dex run "read pyproject.toml"
+
+✓ TASK EXECUTION COMPLETE
+
+═══ RESULTS ═══
+
+📖 File Read
+   Path: D:\personal-agent-os\pyproject.toml
+   Size: 3101 bytes
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dex"
+version = "0.2.0"
+description = "Dex - Your Personal AI Operator"
+...
+[cyan]...(truncated)[/cyan]
+
+[✓ OK] Verification passed
 ```
 
-## Architecture in Action
+### Example 5: Interactive Mode
+
+```bash
+$ dex run
+Running: reminder to review the quarterly report
+
+✓ TASK EXECUTION COMPLETE
+
+═══ RESULTS ═══
+
+📌 Reminder Set
+   ID: rem-1770617289.102938
+   Scheduled: 2026-02-09T06:08:09.102938+00:00
+   In: 1h 0m
+
+[✓ OK] Verification passed
+```
+
+## Commands
+
+```bash
+# Core Commands
+dex run                 # Execute a task
+dex run "task here"     # Execute specific task
+
+# System Information
+dex status              # Show system health
+dex test                # Run diagnostics
+dex config              # Display all settings
+dex agents              # List available agents
+dex --version           # Show version
+
+# Debug
+dex --debug run "task"  # Run with detailed logging
+```
+
+## Where Your Data Lives
+
+```
+.agentic_os/
+├── notes/
+│   ├── 2026-02-09t06-05-22-note.md
+│   ├── 2026-02-09t06-06-35-note.md
+│   └── ...
+├── reminders.json          # All scheduled reminders
+├── logs/
+│   └── dex.log             # System logs
+└── cache/                  # Model caches (future)
+```
+
+**All data is stored locally. Nothing is uploaded to the cloud.**
+
+## How It Works
+
+### Task Execution Flow
+
+```
+User: "remind me to call mom tomorrow at 3pm"
+     ↓
+[CLI] Parses task
+     ↓
+[PlannerAgent] Routes to reminder_set operation
+     ↓
+[ExecutorAgent] Calls ReminderSetTool
+     ↓
+[ReminderSetTool] Stores in .agentic_os/reminders.json
+     ↓
+[VerifierAgent] Validates success
+     ↓
+[CLI] Displays: "📌 Reminder Set - ID, Scheduled time, Duration"
+     ↓
+User: Sees exact reminder details and confirmation
+```
 
 ### Message Flow
 
 ```
-User Task
-    ↓
-PlannerAgent (generates execution plan)
-    ↓
-ExecutorAgent (invokes tools)
-    ↓
-VerifierAgent (validates results)
-    ↓
-CLI (displays results)
-```
-
-### Component Interaction
-
-1. **Message Bus**: Coordinates all agent communication
-2. **TaskDefinition**: Encodes user intent
-3. **ExecutionPlan**: Specifies steps and tool calls
-4. **Tool Registry**: Manages available tools
-5. **StateManager**: Tracks execution progress
-
-## Core Concepts
-
-### Messages
-All agent communication flows through a message bus. Messages support:
-- Request-response patterns
-- Broadcasting
-- Correlation tracking
-- Status updates
-
-### Tasks
-A user request is converted into a `TaskDefinition` that specifies:
-- Natural language request
-- Contextual information
-- Execution constraints
-- Expected outcomes
-
-### Execution Plans
-Plans decompose tasks into ordered steps:
-- Each step invokes a single tool
-- Steps can have dependencies
-- Plans are validated before execution
-- Verification checks outcomes against expectations
-
-### Tool Integration
-Tools are self-describing units:
-- Input schema validation
-- Unified execution interface
-- Output schema enforcement
-- Error handling guarantees
-
-## Examples
-
-### Example 1: Send an Email
-
-```python
-from agentic_os import TaskDefinition, get_bus, get_state_manager
-from uuid import uuid4
-
-task = TaskDefinition(
-    id=uuid4(),
-    user_request="Write and send a formal email to recruiting@example.com about an ML position",
-    context={"recipient": "recruiting@example.com"},
-)
-
-# Execution happens through the agent coordination layer
-# (Full example requires running agents - see docs/examples/)
-```
-
-### Example 2: Data Analysis
-
-```python
-task = TaskDefinition(
-    id=uuid4(),
-    user_request="Load iris.csv and suggest which ML model would work best",
-    context={"dataset_path": "data/iris.csv"},
-)
-```
-
-### Example 3: Schedule a Reminder
-
-```python
-task = TaskDefinition(
-    id=uuid4(),
-    user_request="Create my daily schedule for tomorrow and set reminders for 9 AM, 1 PM, and 5 PM",
-)
+┌─────────────────────────────────────────┐
+│         User Command (CLI)              │
+└────────────────┬────────────────────────┘
+                 ▼
+        ┌──────────────────┐
+        │  Message Bus     │
+        └────────┬─────────┘
+                 ▼
+    ┌────────────┼────────────┐
+    ▼            ▼            ▼
+ PLANNER    EXECUTOR     VERIFIER
+   Agent      Agent        Agent
+    │            │            │
+    └────────────┼────────────┘
+                 ▼
+        ┌──────────────────┐
+        │  Tool Registry   │
+        └────────┬─────────┘
+                 ▼
+      ┌─────────────────────┐
+      │  Execute Tool       │
+      │  (Save/Read/Schedule)
+      └─────────────────────┘
 ```
 
 ## Development
@@ -273,22 +302,30 @@ task = TaskDefinition(
 
 ```
 src/agentic_os/
-├── __init__.py              # Package exports
-├── __main__.py             # python -m entry point
-├── cli.py                  # Command-line interface
-├── config.py               # Configuration management
+├── __init__.py                      # Package info
+├── cli.py                           # User interface
+├── config.py                        # Configuration
 ├── core/
-│   ├── agents.py           # Agent base classes
-│   ├── planning.py         # Planning engine
-│   └── state.py            # State management
+│   ├── agents.py                    # Agent base classes
+│   ├── planner.py                   # Task planning
+│   ├── executor.py                  # Tool execution
+│   ├── verifier.py                  # Result validation
+│   ├── planning.py                  # Planning engine
+│   └── state.py                     # State management
 ├── coordination/
-│   ├── messages.py         # Message definitions
-│   └── bus.py              # Message bus
+│   ├── messages.py                  # Message schemas
+│   └── bus.py                       # Message bus
 ├── tools/
-│   ├── base.py             # Tool abstractions
-│   └── [tool_providers]    # Specific tools
+│   ├── base.py                      # Tool abstractions
+│   ├── shell_command.py             # Shell execution
+│   ├── file_operations.py           # File I/O
+│   ├── notes.py                     # Note management
+│   ├── reminders.py                 # Reminder scheduling
+│   ├── email_browser.py             # Email/Browser (stubs)
+│   ├── time_utils.py                # Time utilities
+│   └── __init__.py                  # Tool exports
 └── interoperability/
-    └── a2a.py              # Agent-to-agent protocols
+    └── a2a.py                       # Agent-to-agent (future)
 ```
 
 ### Running Tests
@@ -297,17 +334,17 @@ src/agentic_os/
 # Install dev dependencies
 pip install -e ".[dev]"
 
-# Run tests
-pytest tests/ -v --cov=src/agentic_os
+# Run all tests
+pytest tests/test_skeleton.py -v
 
-# Run specific test
-pytest tests/test_skeleton.py::TestImports -v
+# Run with coverage
+pytest tests/ --cov=src/agentic_os
 ```
 
 ### Code Quality
 
 ```bash
-# Format code
+# Format
 black src/ tests/
 
 # Lint
@@ -319,90 +356,88 @@ mypy src/agentic_os/
 
 ## Implementation Status
 
-### ✅ Completed
-- Architecture and foundational design
+### ✅ Phase 1 - Foundation (Complete)
+- Core agents and message bus
 - Configuration system
-- Message bus and coordination layer
-- Core agent abstractions
-- **PlannerAgent** - generates execution plans from tasks
-- **ExecutorAgent** - invokes tools and manages execution
-- **VerifierAgent** - validates execution results
-- State management with execution tracing
-- Planning engine with validation
-- Tool interface layer and registry
-- **ShellCommandTool** - system command execution
-- CLI framework with 6 commands
-- End-to-end task orchestration
-- Test infrastructure (9 core tests)
-- **Full end-to-end task execution** ✅
+- CLI framework
+- End-to-end task execution
+- Comprehensive tests
 
-### 🔄 In Development
-- Additional tool implementations (file, email, calendar)
-- LLM-based planning (currently rule-based)
-- Advanced error recovery and replanning
+### ✅ Phase 2 - Reliability (Complete)
+- Error handling and messages
+- Result verification
+- Shell command execution
+- Proper error reporting
 
-### ⏳ Planned
-- Gmail tool integration
-- Browser automation tool
-- Vision/OCR capabilities
-- Voice input support
-- Production-grade error handling
-- Comprehensive observability dashboards
-- Performance optimization
-- Security hardening
+### ✅ Phase 3 - Advanced Tools (Complete)
+- 📝 **Full note-taking system** with persistence
+- 📌 **Reminder scheduling** with flexible time parsing ("tomorrow 3pm", "in 2h", etc.)
+- 📁 **File operations** (read, write, directory listing)
+- 💾 **Local storage** for notes and reminders
+- 🎯 **Result display** showing exactly what was done
+- 🎤 **Voice integration foundation** (ready for Phase 3.5)
+
+### 🔄 Phase 3.5 - Voice (In Planning)
+- Speech-to-Text (Whisper)
+- Wake word detection ("Hey Dex!")
+- Text-to-Speech (Piper/gTTS)
+- Voice command execution
+
+### ⏳ Phase 4 - Advanced Automation (Planned)
+- Gmail integration
+- Browser automation
+- Dataset analysis
+- Calendar/scheduling
+- Multi-agent workflows
 
 ## Hardware Requirements
 
-The system is optimized for:
-- **GPU**: RTX 3050 Laptop (6GB VRAM) or better
-- **RAM**: 16GB DDR4 minimum
-- **Storage**: 50GB for models and caches
+- **GPU**: Optional (for LLM inference in Phase 4)
+- **RAM**: 4GB minimum, 16GB recommended
+- **Storage**: 500MB for Dex + space for notes/reminders
+- **CPU**: Any modern processor
 
-## Model Strategy
+## Roadmap
 
-- Quantized LLMs (4-bit, 8-bit)
-- Lightweight vision models
-- Memory-efficient inference pipelines
-- Strict VRAM budgeting
-- Lazy loading where possible
-
-## Contributing
-
-This project is built with production-grade engineering practices. All contributions should:
-
-1. Include typed interfaces
-2. Have comprehensive tests
-3. Follow the architectural boundaries
-4. Include documentation
-5. Maintain backwards compatibility
-
-## License
-
-MIT License - See LICENSE file for details
+```
+Phase 1 ✅ │████████████████  Foundation
+Phase 2 ✅ │████████████████  Reliability  
+Phase 3 ✅ │████████████████  Tools & Reminders
+Phase 3.5 🔄 │██████░░░░░░░░░░ Voice Integration
+Phase 4 ⏳ │███░░░░░░░░░░░░ Advanced Tools
+```
 
 ## Philosophy
 
-> What you're proposing is not "another assistant".
-> 
-> It's a personal agentic operating layer — something closer to an AI control plane for personal computation.
+> **Dex is not just an assistant. It's your personal AI operator.**
 
-This project demonstrates how personal AI systems should be built: with clear boundaries, explicit user control, production-grade engineering, and a focus on reliability over feature bloat.
+Instead of passive chatbots, Dex actively:
+- Remembers what you tell it
+- Reminds you when important
+- Executes your instructions
+- Shows you exactly what it did
 
-## Resources
+## Contributing
 
-- [Statement of Work](docs/work.txt) - Complete project requirements
-- [Architecture Guide](docs/architecture.md) - Detailed technical design
-- [API Reference](docs/api.md) - Comprehensive API documentation
-- [Examples](docs/examples/) - Working examples and use cases
+Contributions are welcome! Please ensure:
+- Type hints throughout
+- Comprehensive tests
+- Clear documentation
+- Follows architectural patterns
+
+## License
+
+MIT License - See LICENSE file
 
 ## Support
 
-For issues, questions, or contributions:
-- GitHub Issues: Report bugs and request features
-- Discussions: Ask questions and share ideas
-- Pull Requests: Submit improvements
+- 📖 **Documentation**: See `docs/` folder
+- 🐛 **Issues**: GitHub Issues
+- 💬 **Discussions**: GitHub Discussions  
+- 📝 **Examples**: Check `docs/examples/`
 
 ---
 
-**Current Version**: 0.1.0 (Alpha)  
-**Last Updated**: February 2026
+**Version**: 0.2.0 (Phase 3 - Notes, Reminders, Files)  
+**Last Updated**: February 2026  
+**Repository**: https://github.com/STiFLeR7/personal-agent-os

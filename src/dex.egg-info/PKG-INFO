@@ -1,0 +1,460 @@
+Metadata-Version: 2.4
+Name: dex
+Version: 0.2.0
+Summary: Dex - Your Personal AI Operator. Local-first, privacy-focused task automation.
+Author-email: Personal AI Systems <dev@personalai.local>
+License: MIT
+Project-URL: Homepage, https://github.com/STiFLeR7/personal-agent-os
+Project-URL: Documentation, https://github.com/STiFLeR7/personal-agent-os/blob/master/docs
+Project-URL: Repository, https://github.com/STiFLeR7/personal-agent-os.git
+Project-URL: Issues, https://github.com/STiFLeR7/personal-agent-os/issues
+Keywords: ai,agents,agentic-systems,planning,tools,local-first
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: pydantic-settings>=2.0.0
+Requires-Dist: loguru>=0.7.0
+Requires-Dist: typing-extensions>=4.8.0
+Requires-Dist: click>=8.1.0
+Requires-Dist: rich>=13.0.0
+Requires-Dist: python-dotenv>=1.0.0
+Provides-Extra: llm
+Requires-Dist: ollama>=0.1.0; extra == "llm"
+Requires-Dist: transformers>=4.30.0; extra == "llm"
+Requires-Dist: torch>=2.0.0; extra == "llm"
+Provides-Extra: tools
+Requires-Dist: google-auth>=2.25.0; extra == "tools"
+Requires-Dist: google-auth-oauthlib>=1.1.0; extra == "tools"
+Requires-Dist: google-api-python-client>=2.100.0; extra == "tools"
+Requires-Dist: selenium>=4.15.0; extra == "tools"
+Requires-Dist: pandas>=2.0.0; extra == "tools"
+Provides-Extra: vision
+Requires-Dist: pillow>=10.0.0; extra == "vision"
+Requires-Dist: pytesseract>=0.3.10; extra == "vision"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: black>=23.10.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.6.0; extra == "dev"
+Requires-Dist: ipython>=8.15.0; extra == "dev"
+Provides-Extra: all
+Requires-Dist: agentic-os[dev,llm,tools,vision]; extra == "all"
+
+# Agentic OS - Personal Extensible AI Operator
+
+A production-grade local-first agentic system designed to act as a personal AI control plane for autonomous task execution, planning, and verification.
+
+## Overview
+
+Agentic OS is a comprehensive framework for building autonomous AI agents that:
+
+- **Accept multiple input types**: voice, text, keyboard commands, and optional screen understanding
+- **Reason autonomously**: Multi-step task planning with self-verification
+- **Execute real-world actions**: Standardized tool interfaces for browser, email, file systems, datasets, calendars
+- **Coordinate agents**: Message-driven architecture with planner, executor, and verifier agents
+- **Operate locally**: Optimized for consumer hardware with quantized models and efficient inference
+- **Maintain determinism**: Full execution tracing and debuggability
+
+## Architecture
+
+The system is organized into five layers:
+
+### 1. Input & Perception Layer
+- Text input via CLI and UI
+- Keyboard command mode
+- Optional voice input (STT)
+- Screen understanding via OCR/vision models (user-triggered only)
+
+### 2. Agentic Core (Decision Layer)
+- Goal understanding and natural language interpretation
+- Task decomposition into executable steps
+- Planning loops with iterative refinement
+- Self-verification and error correction
+- Stateful memory for context management
+
+### 3. Tool Interface Layer (MCP-style)
+Standardized adapters for:
+- Browser automation (Selenium/Chrome)
+- Gmail interaction (Google APIs)
+- File system operations
+- Dataset inspection (CSV, Pandas)
+- Calendar and reminders
+- Extensible for custom tools
+
+### 4. Coordination Layer (ACP-style)
+Message-driven inter-agent communication with:
+- **Planner Agent**: Decomposes tasks into execution plans
+- **Executor Agent**: Invokes tools and manages execution
+- **Verifier Agent**: Validates outcomes against requirements
+- Optional specialist agents (data analysis, scheduling, etc.)
+
+### 5. Interoperability Layer (A2A-ready)
+Foundation for future agent-to-agent communication:
+- Agent identity and discovery
+- Permission scoping
+- Message validation
+- Remote execution support (future)
+
+## Quick Start
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/STiFLeR7/personal-agent-os.git
+cd personal-agent-os
+
+# Install in development mode
+pip install -e .
+
+# Or install with all optional dependencies
+pip install -e ".[all]"
+```
+
+### Configuration
+
+Create a `.env` file in the project root:
+
+```bash
+# LLM Configuration
+LLM_PROVIDER=ollama
+LLM_MODEL_NAME=mistral
+LLM_BASE_URL=http://localhost:11434
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE=.agentic_os/logs/system.log
+
+# Agent Settings
+AGENT_PLANNING_DEPTH=5
+AGENT_VERIFICATION_ENABLED=true
+
+# Debug Mode
+DEBUG_MODE=false
+```
+
+### First Run
+
+```bash
+# Initialize the system
+agentic-os init
+
+# Run diagnostics
+agentic-os test
+
+# Check status
+agentic-os status
+
+# View configuration
+agentic-os config
+```
+
+## Usage
+
+### Running a Task
+
+```bash
+# CLI mode with specific task
+agentic-os run "open settings"
+agentic-os run "list files in directory"
+
+# Interactive mode
+agentic-os run
+Enter task: show me the README
+```
+
+### Task Types Supported
+
+The system currently has rule-based planning for common task types:
+
+- **Settings**: "open settings", "open preferences"
+- **File Operations**: "list files", "show directory"
+- **Email**: "send email", "write message"
+- **Generic Tasks**: Any other task (requires generic_command tool)
+
+### System Output
+
+When you run a task, you'll see:
+
+```
+Running: open settings
+
+Agents initialized
+Plan request sent
+
+TASK EXECUTION COMPLETE
+
+[OK] Verification passed
+```
+
+The system:
+1. **Initializes agents** (Planner, Executor, Verifier)
+2. **Creates a plan** based on the task type
+3. **Executes the plan** using registered tools
+4. **Verifies the results** for correctness
+5. **Reports the outcome**
+
+### Viewing System State
+
+```bash
+# Check system status
+agentic-os status
+
+# List agents in the system
+agentic-os agents
+
+# View configuration
+agentic-os config
+
+# Run diagnostics
+agentic-os test
+```
+
+### Debug Mode
+
+For detailed execution logs:
+
+```bash
+agentic-os --debug run "open settings"
+```
+
+## Architecture in Action
+
+### Message Flow
+
+```
+User Task
+    ↓
+PlannerAgent (generates execution plan)
+    ↓
+ExecutorAgent (invokes tools)
+    ↓
+VerifierAgent (validates results)
+    ↓
+CLI (displays results)
+```
+
+### Component Interaction
+
+1. **Message Bus**: Coordinates all agent communication
+2. **TaskDefinition**: Encodes user intent
+3. **ExecutionPlan**: Specifies steps and tool calls
+4. **Tool Registry**: Manages available tools
+5. **StateManager**: Tracks execution progress
+
+## Core Concepts
+
+### Messages
+All agent communication flows through a message bus. Messages support:
+- Request-response patterns
+- Broadcasting
+- Correlation tracking
+- Status updates
+
+### Tasks
+A user request is converted into a `TaskDefinition` that specifies:
+- Natural language request
+- Contextual information
+- Execution constraints
+- Expected outcomes
+
+### Execution Plans
+Plans decompose tasks into ordered steps:
+- Each step invokes a single tool
+- Steps can have dependencies
+- Plans are validated before execution
+- Verification checks outcomes against expectations
+
+### Tool Integration
+Tools are self-describing units:
+- Input schema validation
+- Unified execution interface
+- Output schema enforcement
+- Error handling guarantees
+
+## Examples
+
+### Example 1: Send an Email
+
+```python
+from agentic_os import TaskDefinition, get_bus, get_state_manager
+from uuid import uuid4
+
+task = TaskDefinition(
+    id=uuid4(),
+    user_request="Write and send a formal email to recruiting@example.com about an ML position",
+    context={"recipient": "recruiting@example.com"},
+)
+
+# Execution happens through the agent coordination layer
+# (Full example requires running agents - see docs/examples/)
+```
+
+### Example 2: Data Analysis
+
+```python
+task = TaskDefinition(
+    id=uuid4(),
+    user_request="Load iris.csv and suggest which ML model would work best",
+    context={"dataset_path": "data/iris.csv"},
+)
+```
+
+### Example 3: Schedule a Reminder
+
+```python
+task = TaskDefinition(
+    id=uuid4(),
+    user_request="Create my daily schedule for tomorrow and set reminders for 9 AM, 1 PM, and 5 PM",
+)
+```
+
+## Development
+
+### Project Structure
+
+```
+src/agentic_os/
+├── __init__.py              # Package exports
+├── __main__.py             # python -m entry point
+├── cli.py                  # Command-line interface
+├── config.py               # Configuration management
+├── core/
+│   ├── agents.py           # Agent base classes
+│   ├── planning.py         # Planning engine
+│   └── state.py            # State management
+├── coordination/
+│   ├── messages.py         # Message definitions
+│   └── bus.py              # Message bus
+├── tools/
+│   ├── base.py             # Tool abstractions
+│   └── [tool_providers]    # Specific tools
+└── interoperability/
+    └── a2a.py              # Agent-to-agent protocols
+```
+
+### Running Tests
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest tests/ -v --cov=src/agentic_os
+
+# Run specific test
+pytest tests/test_skeleton.py::TestImports -v
+```
+
+### Code Quality
+
+```bash
+# Format code
+black src/ tests/
+
+# Lint
+ruff check src/ tests/
+
+# Type check
+mypy src/agentic_os/
+```
+
+## Implementation Status
+
+### ✅ Completed
+- Architecture and foundational design
+- Configuration system
+- Message bus and coordination layer
+- Core agent abstractions
+- **PlannerAgent** - generates execution plans from tasks
+- **ExecutorAgent** - invokes tools and manages execution
+- **VerifierAgent** - validates execution results
+- State management with execution tracing
+- Planning engine with validation
+- Tool interface layer and registry
+- **ShellCommandTool** - system command execution
+- CLI framework with 6 commands
+- End-to-end task orchestration
+- Test infrastructure (9 core tests)
+- **Full end-to-end task execution** ✅
+
+### 🔄 In Development
+- Additional tool implementations (file, email, calendar)
+- LLM-based planning (currently rule-based)
+- Advanced error recovery and replanning
+
+### ⏳ Planned
+- Gmail tool integration
+- Browser automation tool
+- Vision/OCR capabilities
+- Voice input support
+- Production-grade error handling
+- Comprehensive observability dashboards
+- Performance optimization
+- Security hardening
+
+## Hardware Requirements
+
+The system is optimized for:
+- **GPU**: RTX 3050 Laptop (6GB VRAM) or better
+- **RAM**: 16GB DDR4 minimum
+- **Storage**: 50GB for models and caches
+
+## Model Strategy
+
+- Quantized LLMs (4-bit, 8-bit)
+- Lightweight vision models
+- Memory-efficient inference pipelines
+- Strict VRAM budgeting
+- Lazy loading where possible
+
+## Contributing
+
+This project is built with production-grade engineering practices. All contributions should:
+
+1. Include typed interfaces
+2. Have comprehensive tests
+3. Follow the architectural boundaries
+4. Include documentation
+5. Maintain backwards compatibility
+
+## License
+
+MIT License - See LICENSE file for details
+
+## Philosophy
+
+> What you're proposing is not "another assistant".
+> 
+> It's a personal agentic operating layer — something closer to an AI control plane for personal computation.
+
+This project demonstrates how personal AI systems should be built: with clear boundaries, explicit user control, production-grade engineering, and a focus on reliability over feature bloat.
+
+## Resources
+
+- [Statement of Work](docs/work.txt) - Complete project requirements
+- [Architecture Guide](docs/architecture.md) - Detailed technical design
+- [API Reference](docs/api.md) - Comprehensive API documentation
+- [Examples](docs/examples/) - Working examples and use cases
+
+## Support
+
+For issues, questions, or contributions:
+- GitHub Issues: Report bugs and request features
+- Discussions: Ask questions and share ideas
+- Pull Requests: Submit improvements
+
+---
+
+**Current Version**: 0.1.0 (Alpha)  
+**Last Updated**: February 2026

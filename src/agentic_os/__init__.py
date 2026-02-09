@@ -1,12 +1,16 @@
 """
-Agentic OS: A production-grade personal AI operator.
+Dex: Your Personal AI Operator.
 
-This package provides the core framework for building autonomous agentic systems
-that perform real-world tasks through planning, execution, and verification.
+Dex is a production-grade personal AI operator that handles your tasks through
+planning, execution, and verification. Designed for local-first, privacy-focused
+autonomous task management with voice integration ready.
+
+"Hey Dex!" - Voice activation name
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"  # Phase 3: Advanced Tools & Voice Ready
 __author__ = "Personal AI Systems"
+__agent_name__ = "Dex"
 
 from agentic_os.config import Settings, get_settings, reset_settings
 from agentic_os.core.agents import Agent, AgentState, SynchronousAgent, StatefulAgent

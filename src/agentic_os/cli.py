@@ -1,8 +1,8 @@
 """
-Command-line interface for the Agentic OS.
+Command-line interface for Dex - Your Personal AI Operator.
 
-Provides user-facing commands for running tasks, managing agents, and
-inspecting system state.
+Dex helps you get things done through intelligent task planning and execution.
+Try: "Hey Dex!" for voice activation support (coming soon!)
 """
 
 import asyncio
@@ -14,6 +14,7 @@ from loguru import logger
 from rich.console import Console
 from rich.table import Table
 
+from agentic_os import __agent_name__, __version__
 from agentic_os.config import get_settings
 from agentic_os.coordination import TaskDefinition, get_bus, reset_bus
 from agentic_os.core import (
@@ -24,9 +25,17 @@ from agentic_os.core import (
 )
 from agentic_os.coordination.messages import Message, MessageType
 from agentic_os.tools.base import get_tool_registry
-from agentic_os.tools.shell_command import ShellCommandTool
-
-console = Console()
+from agentic_os.tools import (
+    ShellCommandTool,
+    FileReadTool,
+    FileWriteTool,
+    NoteCreateTool,
+    NoteListTool,
+    ReminderSetTool,
+    ReminderListTool,
+    EmailComposeTool,
+    BrowserOpenTool,
+)
 
 console = Console()
 
@@ -35,8 +44,9 @@ console = Console()
 @click.option(
     "--debug", is_flag=True, help="Enable debug logging"
 )
+@click.version_option(__version__, "--version", "-v", prog_name=__agent_name__)
 def cli(debug: bool) -> None:
-    """Agentic OS - Personal AI Operator."""
+    """Dex - Your Personal AI Operator."""
     settings = get_settings()
     settings.debug_mode = debug
 
@@ -113,12 +123,25 @@ async def _execute_task(request: str) -> None:
     # Get or create message bus
     bus = await get_bus()
 
-    # Register tools
+    # Register all tools
     registry = get_tool_registry()
-    try:
-        registry.register(ShellCommandTool())
-    except ValueError:
-        pass  # Already registered
+    tools = [
+        ShellCommandTool(),
+        FileReadTool(),
+        FileWriteTool(),
+        NoteCreateTool(),
+        NoteListTool(),
+        ReminderSetTool(),
+        ReminderListTool(),
+        EmailComposeTool(),
+        BrowserOpenTool(),
+    ]
+    
+    for tool in tools:
+        try:
+            registry.register(tool)
+        except ValueError:
+            pass  # Already registered
 
     # Initialize agents
     planner = PlannerAgent()
@@ -162,19 +185,78 @@ async def _execute_task(request: str) -> None:
             last_result = history[-1]
             payload = last_result.payload
             
-            console.print("\n[bold green]TASK EXECUTION COMPLETE[/bold green]\n")
+            console.print("\n[bold green]✓ TASK EXECUTION COMPLETE[/bold green]\n")
             
+            # Display execution results with real data
+            results = payload.get("results", {})
+            if results:
+                console.print("[bold cyan]═══ RESULTS ═══[/bold cyan]")
+                for step_id, result in results.items():
+                    if result.get("success"):
+                        # Extract tool output data
+                        output_data = result.get("output", {})
+                        if isinstance(output_data, dict):
+                            data = output_data.get("data", output_data)
+                        else:
+                            data = output_data
+                        
+                        # Display based on tool type (infer from fields)
+                        if "reminder_id" in str(data):
+                            console.print(f"\n[green]📌 Reminder Set[/green]")
+                            console.print(f"   ID: {data.get('reminder_id', 'N/A')}")
+                            console.print(f"   Scheduled: {data.get('scheduled_time', 'N/A')}")
+                            console.print(f"   In: {data.get('time_until', 'N/A')}")
+                        elif "note_id" in str(data):
+                            console.print(f"\n[green]📝 Note Saved[/green]")
+                            console.print(f"   ID: {data.get('note_id', 'N/A')}")
+                            console.print(f"   File: {data.get('file_path', 'N/A')}")
+                            console.print(f"   Created: {data.get('created_at', 'N/A')}")
+                        elif "bytes_written" in str(data):
+                            console.print(f"\n[green]📄 File Written[/green]")
+                            console.print(f"   Path: {data.get('file_path', 'N/A')}")
+                            console.print(f"   Bytes: {data.get('bytes_written', 'N/A')}")
+                        elif "size_bytes" in str(data) or "content" in str(data):
+                            console.print(f"\n[green]📖 File Read[/green]")
+                            console.print(f"   Path: {data.get('file_path', 'N/A')}")
+                            console.print(f"   Size: {data.get('size_bytes', 'N/A')} bytes")
+                            if data.get("content"):
+                                content = data.get("content", "")
+                                # Show first 500 chars
+                                preview = content[:500]
+                                if len(content) > 500:
+                                    preview += "\n[cyan]...(truncated)[/cyan]"
+                                console.print(f"\n[cyan]{preview}[/cyan]")
+                        elif "notes" in str(data):
+                            console.print(f"\n[green]📚 Notes List[/green]")
+                            notes_list = data.get("notes", [])
+                            if notes_list:
+                                console.print(f"   Found {len(notes_list)} notes:")
+                                for note in notes_list[:10]:  # Show first 10
+                                    console.print(f"     • {note.get('filename', 'Unknown')}")
+                            else:
+                                console.print("   No notes found")
+                        elif "reminders" in str(data):
+                            console.print(f"\n[green]📋 Reminders List[/green]")
+                            reminders_list = data.get("reminders", [])
+                            if reminders_list:
+                                console.print(f"   Found {len(reminders_list)} reminders:")
+                                for rem in reminders_list[:10]:  # Show first 10
+                                    console.print(f"     • {rem.get('message', 'Unknown')} @ {rem.get('scheduled_time', 'N/A')}")
+                            else:
+                                console.print("   No active reminders")
+            
+            # Show verification status
             if payload.get("verified"):
-                console.print("[green][OK] Verification passed[/green]")
+                console.print("\n[green][✓ OK] Verification passed[/green]")
             else:
-                console.print("[red][ERROR] Verification failed[/red]")
+                console.print("\n[red][✗ ERROR] Verification failed[/red]")
                 if payload.get("issues"):
                     console.print("[yellow]Issues:[/yellow]")
                     for issue in payload.get("issues", []):
                         console.print(f"  - {issue}")
 
             if payload.get("recommendations"):
-                console.print("[cyan]Recommendations:[/cyan]")
+                console.print("\n[cyan]Recommendations:[/cyan]")
                 for rec in payload.get("recommendations", []):
                     console.print(f"  - {rec}")
         else:
