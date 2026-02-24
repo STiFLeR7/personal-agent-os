@@ -145,16 +145,35 @@ class ReminderSetTool(Tool):
     @staticmethod
     def _parse_time(time_str: str, base_time: datetime) -> datetime:
         """Parse various time formats."""
+        import re
+        
         time_str = time_str.lower().strip()
 
-        # Relative formats: "2h", "30m", "tomorrow", "next monday"
+        # Short forms: "2h", "30m", "3d"
         if time_str.endswith("h"):
             hours = int(time_str[:-1])
             return base_time + timedelta(hours=hours)
         elif time_str.endswith("m"):
             minutes = int(time_str[:-1])
             return base_time + timedelta(minutes=minutes)
-        elif time_str == "tomorrow":
+        elif time_str.endswith("d"):
+            days = int(time_str[:-1])
+            return base_time + timedelta(days=days)
+        
+        # Natural language: "5 minutes", "2 hours", "1 day"
+        match = re.search(r'(\d+)\s*(minute|min|m|hour|hr|h|day|d)', time_str)
+        if match:
+            number = int(match.group(1))
+            unit = match.group(2)
+            if unit in ['minute', 'min', 'm']:
+                return base_time + timedelta(minutes=number)
+            elif unit in ['hour', 'hr', 'h']:
+                return base_time + timedelta(hours=number)
+            elif unit in ['day', 'd']:
+                return base_time + timedelta(days=number)
+        
+        # Special cases
+        if time_str == "tomorrow":
             return base_time + timedelta(days=1)
         elif time_str.startswith("tomorrow"):
             # "tomorrow 3pm"
@@ -164,6 +183,8 @@ class ReminderSetTool(Tool):
                 hour = int(time_part.replace("pm", "").replace("am", ""))
                 if "pm" in time_part and hour != 12:
                     hour += 12
+                elif "am" in time_part and hour == 12:
+                    hour = 0
                 return (base_time + timedelta(days=1)).replace(
                     hour=hour, minute=0, second=0, microsecond=0
                 )
@@ -182,7 +203,11 @@ class ReminderSetTool(Tool):
             return base_time.replace(hour=hour, minute=0, second=0, microsecond=0)
 
         # Default: treat as ISO string
-        return datetime.fromisoformat(time_str)
+        try:
+            return datetime.fromisoformat(time_str)
+        except ValueError:
+            # If all else fails, default to 1 hour from now
+            return base_time + timedelta(hours=1)
 
     @staticmethod
     def _format_time_delta(delta: timedelta) -> str:

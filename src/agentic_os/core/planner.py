@@ -141,7 +141,8 @@ class PlannerAgent(StatefulAgent):
             return await self._plan_list_files(task)
 
         # Browser/application opening (must check before generic "open")
-        elif any(word in request for word in ["chrome", "firefox", "browser", "edge", "explorer", "navigate", "website", "url", "http"]):
+        # Includes browsers, chat apps, social media, etc.
+        elif any(word in request for word in ["chrome", "firefox", "browser", "edge", "explorer", "navigate", "website", "url", "http", "whatsapp", "discord", "teams", "slack", "telegram", "signal", "messenger", "spotify", "netflix", "youtube"]):
             return await self._plan_open_application(task)
 
         # Settings/preferences (more specific)
@@ -163,52 +164,35 @@ class PlannerAgent(StatefulAgent):
         """Create a plan to open a browser or application."""
         request = task.user_request.lower()
         
-        # Map application names to commands
-        import sys
-        if sys.platform == "win32":
-            # Windows commands
-            app_commands = {
-                "chrome": "start chrome",
-                "firefox": "start firefox",
-                "edge": "start msedge",
-                "explorer": "start explorer",
-            }
-        else:
-            # Unix/Linux commands
-            app_commands = {
-                "chrome": "google-chrome",
-                "firefox": "firefox",
-                "edge": "microsoft-edge",
-                "explorer": "nautilus",
-            }
-        
-        # Find which app to open
+        # Extract application name from request
         app_name = "chrome"  # default
-        command = "start chrome"  # default
+        supported_apps = [
+            "chrome", "chromium", "firefox", "edge", "safari", "brave",
+            "whatsapp", "discord", "teams", "slack", "telegram", "signal", "messenger",
+            "spotify", "netflix", "youtube", "vlc", "vscode", "explorer"
+        ]
         
-        for app, cmd in app_commands.items():
+        for app in supported_apps:
             if app in request:
                 app_name = app
-                command = cmd
                 break
         
-        # Check if user wants to perform actions like "choose third profile"
-        action = ""
-        if "profile" in request:
-            action = " (profile selection needed)"
-        if "new tab" in request or "new window" in request:
-            if sys.platform == "win32":
-                command += " --new-window"
-            else:
-                command += " --new-window"
+        # Check for URL in request
+        url = None
+        if "http" in request:
+            # Extract URL (simple extraction)
+            import re
+            urls = re.findall(r'https?://\S+', request)
+            if urls:
+                url = urls[0]
         
         steps = [
             PlanStep(
                 id=uuid4(),
                 order=1,
-                description=f"Open {app_name}{action}",
-                tool_name="shell_command",
-                tool_args={"command": command},
+                description=f"Open {app_name}",
+                tool_name="app_launch",
+                tool_args={"app_name": app_name, "url": url},
             )
         ]
         
@@ -216,8 +200,8 @@ class PlannerAgent(StatefulAgent):
             id=uuid4(),
             task_id=task.id,
             steps=steps,
-            reasoning=f"User requested to open {app_name}. Using shell command to launch application.",
-            confidence=0.9,
+            reasoning=f"User requested to open {app_name}. Using app launcher to launch application.",
+            confidence=0.95,
             created_by=self.agent_id,
         )
 
@@ -359,18 +343,64 @@ class PlannerAgent(StatefulAgent):
 
     async def _plan_set_reminder(self, task: TaskDefinition) -> ExecutionPlan:
         """Create a plan to set a reminder."""
+        import re
+        
+        request = task.user_request.lower()
         message = task.context.get("message", task.user_request)
-        time = task.context.get("time", "1h")  # Default to 1 hour
         priority = task.context.get("priority", "normal")
+        
+        # Extract time expression from request using regex
+        time = None
+        
+        # Patterns: "in X minutes/hours/days", "tomorrow at 3pm", "in 5m/h"
+        patterns = [
+            r'in\s+(\d+)\s*(minute|min|m)s?',          # "in 5 minutes" -> "5m"
+            r'in\s+(\d+)\s*(hour|hr|h)s?',             # "in 2 hours" -> "2h"
+            r'in\s+(\d+)\s*(day|d)s?',                 # "in 3 days" -> "3d"
+            r'at\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)', # "at 3pm" -> "3pm"
+            r'tomorrow(?:\s+at\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm)?))?',  # "tomorrow" or "tomorrow at 3pm"
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, request)
+            if match:
+                if 'minute' in pattern or 'min' in pattern:
+                    time = f"{match.group(1)}m"
+                elif 'hour' in pattern or 'hr' in pattern:
+                    time = f"{match.group(1)}h"
+                elif 'day' in pattern:
+                    time = f"{match.group(1)}d"
+                elif 'at' in pattern and match.group(1):
+                    time = match.group(1).replace(' ', '').lower()  # "3pm" or "15:30"
+                elif 'tomorrow' in pattern:
+                    if match.group(1):  # "tomorrow at 3pm"
+                        time = f"tomorrow {match.group(1).replace(' ', '').lower()}"
+                    else:  # just "tomorrow"
+                        time = "tomorrow"
+                break
+        
+        # If no time found, default to 1 minute (not 1 hour!)
+        if not time:
+            time = "1m"
+        
+        # Extract clean message (remove time expressions)
+        clean_message = re.sub(
+            r'(in\s+\d+\s*(minute|min|m|hour|hr|h|day|d)s?|at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?|tomorrow(?:\s+at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?)',
+            '',
+            request,
+            flags=re.IGNORECASE
+        ).strip()
+        clean_message = re.sub(r'^remind\s+me\s+', '', clean_message, flags=re.IGNORECASE).strip()
+        clean_message = clean_message.capitalize() if clean_message else task.user_request
 
         steps = [
             PlanStep(
                 id=uuid4(),
                 order=1,
-                description=f"Set reminder: {message}",
+                description=f"Set reminder: {clean_message} at {time}",
                 tool_name="reminder_set",
                 tool_args={
-                    "message": message,
+                    "message": clean_message,
                     "time": time,
                     "priority": priority,
                 },

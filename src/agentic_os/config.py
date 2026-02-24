@@ -49,6 +49,42 @@ class LLMConfig(BaseSettings):
     timeout: int = Field(default=120, ge=1, description="Request timeout in seconds")
 
 
+class NotificationConfig(BaseSettings):
+    """Configuration for notification channels."""
+
+    model_config = SettingsConfigDict(env_prefix="NOTIFY_")
+
+    desktop_enabled: bool = Field(
+        default=True, description="Enable desktop popup notifications"
+    )
+    email_enabled: bool = Field(default=False, description="Enable email notifications")
+    whatsapp_enabled: bool = Field(default=False, description="Enable WhatsApp notifications")
+    
+    # Email settings
+    email_from: Optional[str] = Field(
+        default=None, description="Email address for sending notifications"
+    )
+    smtp_server: str = Field(default="smtp.gmail.com", description="SMTP server address")
+    smtp_port: int = Field(default=587, description="SMTP server port")
+    smtp_password: Optional[str] = Field(
+        default=None, description="SMTP password (use .env for security)"
+    )
+    
+    # WhatsApp/Twilio settings
+    twilio_account_sid: Optional[str] = Field(
+        default=None, description="Twilio Account SID"
+    )
+    twilio_auth_token: Optional[str] = Field(
+        default=None, description="Twilio Auth Token"
+    )
+    twilio_whatsapp_from: Optional[str] = Field(
+        default=None, description="Twilio WhatsApp phone number (format: +1234567890)"
+    )
+    user_whatsapp_number: Optional[str] = Field(
+        default=None, description="Your WhatsApp number for notifications (format: +1234567890)"
+    )
+
+
 class ToolsConfig(BaseSettings):
     """Configuration for tool integrations."""
 
@@ -128,6 +164,7 @@ class Settings(BaseSettings):
     # Subsystem configs
     dex: DexIdentity = Field(default_factory=DexIdentity)
     llm: LLMConfig = Field(default_factory=LLMConfig)
+    notifications: NotificationConfig = Field(default_factory=NotificationConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
@@ -165,3 +202,8 @@ def reset_settings() -> None:
     """Reset the global settings instance (useful for testing)."""
     global _settings
     _settings = None
+
+
+def load_config() -> Settings:
+    """Alias for get_settings() for backward compatibility."""
+    return get_settings()

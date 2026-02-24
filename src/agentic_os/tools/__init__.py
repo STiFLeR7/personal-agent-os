@@ -13,6 +13,7 @@ from agentic_os.tools.file_operations import FileReadTool, FileWriteTool
 from agentic_os.tools.notes import NoteCreateTool, NoteListTool
 from agentic_os.tools.reminders import ReminderSetTool, ReminderListTool
 from agentic_os.tools.email_browser import EmailComposeTool, BrowserOpenTool
+from agentic_os.tools.app_tools import AppLaunchTool
 from agentic_os.tools.time_utils import (
     get_current_time,
     parse_relative_time,
@@ -40,6 +41,7 @@ __all__ = [
     "ReminderListTool",
     "EmailComposeTool",
     "BrowserOpenTool",
+    "AppLaunchTool",
     # Time utilities
     "get_current_time",
     "parse_relative_time",
