@@ -19,6 +19,8 @@ from agentic_os.coordination.messages import (
 )
 from agentic_os.core.agents import StatefulAgent
 from agentic_os.core.state import get_state_manager
+from agentic_os.core.telemetry import TelemetryManager
+import time
 
 
 class ExecutorAgent(StatefulAgent):
@@ -37,12 +39,13 @@ class ExecutorAgent(StatefulAgent):
         """Initialize the executor agent."""
         super().__init__(agent_id, "executor")
         self.state_manager = get_state_manager()
+        self.telemetry = TelemetryManager()
 
     async def _register_message_handlers(self) -> None:
         """Register handlers for execution requests."""
         if self._bus:
-            await self._bus.subscribe(MessageType.PLAN_RESPONSE, self.handle_message)
-            logger.info("ExecutorAgent registered for PLAN_RESPONSE messages")
+            await self._bus.subscribe(MessageType.EXECUTE_REQUEST, self.handle_message)
+            logger.info("ExecutorAgent registered for EXECUTE_REQUEST messages")
 
     async def handle_message(self, message: Message) -> None:
         """
@@ -52,6 +55,7 @@ class ExecutorAgent(StatefulAgent):
             message: Plan response message
         """
         self.state.messages_processed += 1
+        start_time = time.time()
 
         try:
             # Extract plan from payload
@@ -93,6 +97,9 @@ class ExecutorAgent(StatefulAgent):
                 # Execute the tool
                 result = await self._execute_step(step)
                 results[step.id] = result
+                
+                # Log Telemetry for tool call
+                self.telemetry.log_tool_call(str(task_id), step.tool_name, result.success)
 
                 # Store in trace
                 exec_state.execution_trace.steps_executed.append({
@@ -110,6 +117,10 @@ class ExecutorAgent(StatefulAgent):
                         "step_id": str(step.id),
                         "error": result.error,
                     })
+
+            # Log overall task latency
+            duration_ms = (time.time() - start_time) * 1000
+            self.telemetry.log_task_latency(str(task_id), "executor", duration_ms)
 
             # Mark task as complete
             self.state_manager.mark_task_complete(task_id, {

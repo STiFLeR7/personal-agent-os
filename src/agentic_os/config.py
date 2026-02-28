@@ -35,9 +35,12 @@ class LLMConfig(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="LLM_")
 
-    provider: str = Field(default="ollama", description="LLM provider: 'ollama' or 'huggingface'")
+    provider: str = Field(default="ollama", description="LLM provider: 'ollama', 'google', or 'huggingface'")
     model_name: str = Field(
-        default="mistral", description="Model identifier (e.g., 'mistral', 'neural-chat')"
+        default="mistral", description="Model identifier (e.g., 'gemini-1.5-pro', 'mistral')"
+    )
+    api_key: Optional[str] = Field(
+        default=None, description="API key for the provider (e.g., Google AI Studio key)"
     )
     base_url: Optional[str] = Field(
         default=None, description="Base URL for API (e.g., http://localhost:11434)"

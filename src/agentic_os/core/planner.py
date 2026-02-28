@@ -20,6 +20,10 @@ from agentic_os.coordination.messages import (
 )
 from agentic_os.core.agents import StatefulAgent
 from agentic_os.core.planning import PlanningEngine
+from agentic_os.config import get_settings
+from agentic_os.core.risk import RiskEngine
+from agentic_os.core.telemetry import TelemetryManager
+import time
 
 
 class PlannerAgent(StatefulAgent):
@@ -36,7 +40,15 @@ class PlannerAgent(StatefulAgent):
     def __init__(self, agent_id: str = "planner"):
         """Initialize the planner agent."""
         super().__init__(agent_id, "planner")
-        self.planning_engine = PlanningEngine()
+        self.settings = get_settings()
+        self.risk_engine = RiskEngine()
+        self.telemetry = TelemetryManager()
+        
+        if self.settings.llm.provider == "google":
+            from agentic_os.core.gemini_planner import GeminiPlanner
+            self.planning_engine = GeminiPlanner(risk_engine=self.risk_engine)
+        else:
+            self.planning_engine = PlanningEngine()
 
     async def _register_message_handlers(self) -> None:
         """Register handlers for plan requests."""
@@ -52,6 +64,7 @@ class PlannerAgent(StatefulAgent):
             message: Plan request message
         """
         self.state.messages_processed += 1
+        start_time = time.time()
         
         try:
             # Extract task from payload
@@ -68,18 +81,37 @@ class PlannerAgent(StatefulAgent):
             available_tools = self.get_available_tools()
             self.update_context("available_tools", available_tools)
 
-            # Generate plan
-            plan = await self._generate_plan(task, available_tools)
+            # Generate plan (Gemini or Fallback)
+            plan = await self.planning_engine.plan_task(task, available_tools)
+            
+            # If engine returned None (or is base engine), use local rule-based fallback
+            if not plan or plan.created_by == "engine":
+                logger.info("Using rule-based fallback planning")
+                plan = await self._generate_plan_fallback(task, available_tools)
 
             if plan:
+                # Ensure risk assessment is present
+                risk_data = plan.metadata.get("risk_score")
+                if not risk_data:
+                    risk_score = self.risk_engine.evaluate_plan(
+                        [s.model_dump() for s in plan.steps]
+                    )
+                    risk_data = risk_score.model_dump()
+                    plan.metadata["risk_score"] = risk_data
+
+                # Log Telemetry
+                duration_ms = (time.time() - start_time) * 1000
+                self.telemetry.log_task_latency(str(task.id), "planner", duration_ms)
+                self.telemetry.log_risk_assessment(str(task.id), risk_data["level"], risk_data["score"])
+
                 # Validate plan
                 is_valid = await self.planning_engine.validate_plan(plan)
                 if not is_valid:
                     logger.warning("Generated plan failed validation")
 
-                # Send plan to executor
+                # Send plan to requester (CLI/Dashboard)
                 await self._send_message(
-                    recipient="executor",
+                    recipient=message.sender,
                     message_type=MessageType.PLAN_RESPONSE,
                     payload={
                         "plan": plan.model_dump(),
@@ -88,7 +120,7 @@ class PlannerAgent(StatefulAgent):
                     correlation_id=message.id,
                     parent_message_id=message.id,
                 )
-                logger.info(f"Plan generated with {len(plan.steps)} steps")
+                logger.info(f"Plan generated with {len(plan.steps)} steps (Risk: {plan.metadata['risk_score']['level']})")
             else:
                 await self._send_error_response(
                     message, "Failed to generate plan"
@@ -98,7 +130,7 @@ class PlannerAgent(StatefulAgent):
             logger.error(f"Error in planner: {e}")
             await self._send_error_response(message, str(e))
 
-    async def _generate_plan(
+    async def _generate_plan_fallback(
         self, task: TaskDefinition, available_tools: list[str]
     ) -> Optional[ExecutionPlan]:
         """

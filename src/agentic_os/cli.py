@@ -172,16 +172,78 @@ async def _execute_task(request: str) -> None:
         payload={"task": task.model_dump()},
     )
 
-    await bus.publish(plan_request)
-    console.print("[cyan]Plan request sent[/cyan]")
+    console.print("[cyan]Waiting for plan...[/cyan]")
+    try:
+        plan_response = await bus.request_response(plan_request, timeout_seconds=60)
+    except Exception as e:
+        console.print(f"[red]Planning failed or timed out: {e}[/red]")
+        return
+
+    plan_data = plan_response.payload.get("plan")
+    if not plan_data:
+        console.print("[red]No plan received in response.[/red]")
+        return
+
+    plan = ExecutionPlan(**plan_data)
+    risk_data = plan.metadata.get("risk_score", {})
+    
+    # Display Plan
+    console.print("\n[bold cyan]PROPOSED PLAN:[/bold cyan]")
+    for step in plan.steps:
+        console.print(f"  {step.order}. {step.description} [dim]({step.tool_name})[/dim]")
+    
+    console.print(f"\n[bold]Reasoning:[/bold] {plan.reasoning}")
+    
+    # Display Risk
+    risk_level = risk_data.get("level", "unknown")
+    risk_color = "green" if risk_level == "low" else "yellow" if risk_level == "medium" else "red"
+    console.print(f"[bold]Risk Level:[/bold] [{risk_color}]{risk_level.upper()}[/{risk_color}]")
+    if risk_data.get("reasoning"):
+        console.print(f"[dim]Risk Reasoning: {risk_data['reasoning']}[/dim]")
+
+    # Human Confirmation for High Risk
+    from agentic_os.core.risk import RiskEngine, RiskLevel
+    risk_engine = RiskEngine()
+    from agentic_os.core.risk import RiskScore
+    current_risk = RiskScore(**risk_data) if risk_data else None
+    
+    if current_risk and risk_engine.requires_confirmation(current_risk):
+        console.print("\n[bold red]⚠ HIGH RISK DETECTED. Human confirmation required.[/bold red]")
+        confirm = console.input("[bold yellow]Do you want to execute this plan? (y/N): [/bold yellow]")
+        if confirm.lower() != 'y':
+            console.print("[yellow]Execution cancelled by user.[/yellow]")
+            return
+    elif risk_level == "medium":
+        console.print("\n[yellow]Medium risk task. Proceeding...[/yellow]")
+    else:
+        console.print("\n[green]Low risk task. Proceeding...[/green]")
+
+    # Send execute request
+    execute_request = Message(
+        message_type=MessageType.EXECUTE_REQUEST,
+        sender="cli",
+        recipient="executor",
+        payload={
+            "plan": plan.model_dump(),
+            "task_id": str(task.id),
+        },
+    )
+    await bus.publish(execute_request)
+    console.print("[cyan]Execution started...[/cyan]")
 
     # Wait for verification result
     try:
         # Give agents time to process
-        await asyncio.sleep(2)
-
-        # Check for results
-        history = bus.get_history(sender="verifier", message_type=MessageType.VERIFY_RESPONSE)
+        # In a real system, we'd wait for a specific response, but here we'll poll history for simplicity
+        # or use a timeout loop
+        max_wait = 120
+        start_wait = asyncio.get_event_loop().time()
+        
+        while asyncio.get_event_loop().time() - start_wait < max_wait:
+            await asyncio.sleep(1)
+            history = bus.get_history(sender="verifier", message_type=MessageType.VERIFY_RESPONSE)
+            if history:
+                break
         
         if history:
             last_result = history[-1]
@@ -506,6 +568,20 @@ def notify(channel: str) -> None:
         asyncio.run(send_test())
     except Exception as e:
         console.print(f"[red]Error during notification test: {e}[/red]")
+
+
+@cli.command()
+@click.option("--port", "-p", default=8000, help="Port to run the API server on")
+def dashboard(port: int) -> None:
+    """Start the Dex Web Dashboard API."""
+    from agentic_os.api.main import start_server
+    console.print(f"[bold cyan]🚀 Starting Dex Dashboard API on port {port}...[/bold cyan]")
+    console.print(f"   API Docs: http://127.0.0.1:{port}/docs")
+    console.print("[dim]Press Ctrl+C to stop[/dim]\n")
+    try:
+        start_server(port=port)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Dashboard stopped[/yellow]")
 
 
 def main() -> None:

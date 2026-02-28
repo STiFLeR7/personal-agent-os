@@ -32,6 +32,8 @@ dependencies = [
     "click>=8.1.0",             # CLI framework
     "rich>=13.0.0",             # Terminal formatting
     "python-dotenv>=1.0.0",     # Environment variable management
+    "fastapi>=0.100.0",         # Web API
+    "uvicorn>=0.23.0",          # ASGI server
 ]
 
 [project.optional-dependencies]
@@ -39,6 +41,8 @@ llm = [
     "ollama>=0.1.0",            # Local LLM inference
     "transformers>=4.30.0",     # Hugging Face transformers
     "torch>=2.0.0",             # PyTorch for models
+    "google-generativeai>=0.3.0", # Google Gemini API
+    "sentence-transformers>=2.2.0", # Local embeddings
 ]
 tools = [
     "google-auth>=2.25.0",      # Google API authentication

@@ -132,8 +132,9 @@ class ExecutionPlan(BaseModel):
     confidence: float = Field(
         default=0.5, ge=0.0, le=1.0, description="Confidence in plan success"
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     created_by: str = Field(description="Agent that created the plan")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional plan metadata")
 
 
 class ExecutionResult(BaseModel):
