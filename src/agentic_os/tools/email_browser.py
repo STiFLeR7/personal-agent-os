@@ -6,7 +6,7 @@ Framework for Gmail API integration and direct SMTP composition.
 
 from typing import Any, Optional, List
 import asyncio
-from pydantic import Field
+from pydantic import Field, model_validator
 from loguru import logger
 
 from agentic_os.tools.base import Tool, ToolInput, ToolOutput
@@ -21,6 +21,21 @@ class EmailComposeInput(ToolInput):
     recipients: Optional[List[str]] = Field(default=None, description="List of recipient email addresses")
     subject: str = Field(description="Email subject")
     body: str = Field(description="Email body")
+
+    @model_validator(mode='before')
+    @classmethod
+    def validate_recipients(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            recipient = data.get('recipient')
+            recipients = data.get('recipients')
+            
+            # If recipients is provided but recipient is not, pick the first one
+            if not recipient and recipients:
+                if isinstance(recipients, list) and len(recipients) > 0:
+                    data['recipient'] = recipients[0]
+                elif isinstance(recipients, str):
+                    data['recipient'] = recipients
+        return data
 
 
 class EmailComposeOutput(ToolOutput):
