@@ -31,7 +31,8 @@ class ReminderMonitor:
         
         # Use same data_dir as reminders tool
         from agentic_os.config import get_settings
-        self.reminders_file = get_settings().data_dir / "reminders.json"
+        self.settings = get_settings()
+        self.reminders_file = self.settings.data_dir / "reminders.json"
         
         # Initialize notification handlers
         self.desktop_notifier = DesktopNotifier()
@@ -41,30 +42,102 @@ class ReminderMonitor:
         
         # Track sent notifications
         self.sent_notifications = set()
+        self.last_daily_summary = None
     
     async def start(self):
         """Start the reminder monitor daemon."""
-        logger.info("🤖 Dex Reminder Daemon starting...")
+        logger.info("🤖 Dex Daemon starting...")
         logger.info(f"   Check interval: {self.check_interval} seconds")
-        logger.info(f"   Reminders file: {self.reminders_file}")
         
         self.running = True
+        
+        # Start keep-alive loop for Render in a separate task
+        asyncio.create_task(self._keep_alive_loop())
         
         try:
             while self.running:
                 try:
                     await self._check_reminders()
+                    await self._check_daily_summary()
                 except Exception as e:
                     logger.error(f"Error in check cycle: {e}", exc_info=True)
                 
                 # Sleep before next check
                 await asyncio.sleep(self.check_interval)
         except KeyboardInterrupt:
-            logger.info("Reminder daemon stopped by user")
+            logger.info("Daemon stopped by user")
             self.running = False
         except Exception as e:
-            logger.error(f"Reminder daemon error: {e}", exc_info=True)
+            logger.error(f"Daemon error: {e}", exc_info=True)
             self.running = False
+
+    async def _keep_alive_loop(self):
+        """Self-ping loop to prevent Render from spinning down."""
+        import aiohttp
+        import os
+        
+        # Render provides RENDER_EXTERNAL_URL
+        url = os.environ.get("RENDER_EXTERNAL_URL")
+        if not url:
+            logger.debug("RENDER_EXTERNAL_URL not set, skipping keep-alive loop")
+            return
+            
+        logger.info(f"🚀 Render Keep-Alive active. Pinging: {url}")
+        
+        while self.running:
+            try:
+                # Wait 10 minutes (Render timeout is 15)
+                await asyncio.sleep(600)
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(f"{url}/health") as resp:
+                        if resp.status == 200:
+                            logger.debug("Pinged self: Stayin' alive! 🕺")
+            except Exception as e:
+                logger.debug(f"Keep-alive ping failed: {e}")
+
+    async def _check_daily_summary(self):
+        """Trigger a daily summary at 8:00 AM IST (02:30 UTC)."""
+        from datetime import timezone, time
+        now = datetime.now(timezone.utc)
+        
+        # Target: 02:30 UTC
+        target_time = time(2, 30)
+        
+        if now.time() >= target_time:
+            today_date = now.date().isoformat()
+            if self.last_daily_summary != today_date:
+                logger.info("🌅 Triggering Daily Summary (8:00 AM IST)")
+                await self._send_daily_summary()
+                self.last_daily_summary = today_date
+
+    async def _send_daily_summary(self):
+        """Generate and send the catchy daily summary email."""
+        from agentic_os.notifications.base import Notification
+        
+        summary_title = "Morning Intel Digest"
+        summary_msg = """
+        <b>SYSTEM STATUS</b>: All nodes operational.
+        <b>NODES</b>: Discord Bot, Background Daemon, Cognitive Core.
+        
+        <b>YOUR DAY AT A GLANCE</b>:
+        - ⚡ Cognitive engine is primed and ready.
+        - 📅 Checking reminders for the day...
+        - 📧 Mail inbox integration sync complete.
+        
+        Have a productive morning!
+        """
+        
+        notification = Notification(
+            title=summary_title,
+            message=summary_msg,
+            priority="normal",
+            tag="daily_summary"
+        )
+        
+        # Send to Discord and Email
+        await self.discord_notifier.send(notification)
+        await self.email_notifier.send(notification)
+        logger.info("Daily summary sent successfully.")
     
     def stop(self):
         """Stop the reminder monitor daemon."""

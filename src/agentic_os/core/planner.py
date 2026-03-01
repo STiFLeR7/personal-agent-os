@@ -324,9 +324,9 @@ class PlannerAgent(StatefulAgent):
             PlanStep(
                 id=uuid4(),
                 order=1,
-                description=f"Execute: {task.user_request}",
-                tool_name="generic_command",
-                tool_args={"command": task.user_request},
+                description=f"Process query: {task.user_request}",
+                tool_name="generic_chat",
+                tool_args={"query": task.user_request},
             )
         ]
 
@@ -334,8 +334,8 @@ class PlannerAgent(StatefulAgent):
             id=uuid4(),
             task_id=task.id,
             steps=steps,
-            reasoning=f"Generic plan for: {task.user_request}",
-            confidence=0.5,
+            reasoning=f"Using LLM for generic query: {task.user_request}",
+            confidence=0.7,
             created_by=self.agent_id,
         )
 

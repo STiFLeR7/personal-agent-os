@@ -14,6 +14,7 @@ from agentic_os.tools.notes import NoteCreateTool, NoteListTool
 from agentic_os.tools.reminders import ReminderSetTool, ReminderListTool
 from agentic_os.tools.email_browser import EmailComposeTool, BrowserOpenTool
 from agentic_os.tools.app_tools import AppLaunchTool
+from agentic_os.tools.chat import GenericChatTool
 from agentic_os.tools.time_utils import (
     get_current_time,
     parse_relative_time,
@@ -42,6 +43,7 @@ __all__ = [
     "EmailComposeTool",
     "BrowserOpenTool",
     "AppLaunchTool",
+    "GenericChatTool",
     # Time utilities
     "get_current_time",
     "parse_relative_time",

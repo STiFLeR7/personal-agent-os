@@ -1,78 +1,78 @@
-# Dex | Your Personal Cognitive AI Operator
+# Dex | Your Personal Discord Cognitive Bot
 
-Dex is a local-first, privacy-focused personal AI system that transforms natural language requests into deterministic system actions.
-
-With **Phase 4: Cognitive Core**, Dex evolves into a context-aware operating layer augmented by Gemini 1.5, featuring a **Minimal Intelligence Interface** dashboard and a robust risk engine.
+Dex is a local-first, privacy-focused personal AI system that has evolved into a **Discord-native interactive cognitive control plane**. By running Dex locally and interacting with it through your private Discord server, you get a powerful, context-aware personal assistant that transforms natural language requests into deterministic system actions on your machine.
 
 ## 🚀 Key Features
 
+- **Discord-Native Control**: Interact with your local machine from anywhere using your personal Discord server.
+- **Channel Routing**: Organized output across specific channels (`#console`, `#timeline`, `#priority-feed`, etc.) to reduce spam and keep logs clean.
 - **Gemini Reasoning Layer**: Advanced task decomposition and tool selection with JSON-schema constrained reliability.
-- **Minimal Intelligence Interface**: A production-grade dashboard designed for clarity and focused control.
-- **Risk Engine**: Three-tier security classification (Low/Medium/High) with human-in-the-loop confirmation.
-- **Context Memory Engine**: Local semantic retrieval using SQLite and embeddings for project-level intelligence.
-- **Telemetry & Observability**: Real-time performance tracking and tool usage analytics.
+- **Risk Engine**: Three-tier security classification (Low/Medium/High) with human-in-the-loop confirmation directly via Discord UI buttons.
+- **Background Daemon**: A built-in daemon that monitors your reminders and system events, pinging you in Discord when it's time.
 - **Local-First & Private**: All data stays on your machine. Dex only uses Gemini for reasoning, never for data storage.
 
-## 🏗 Architecture
+## 🏗 Discord Architecture
 
 ```mermaid
 graph TD
-    User([User CLI/Web]) --> Planner[Planner Agent + Gemini]
-    Planner --> Context[Memory Engine]
+    User([You via Discord Mobile/Desktop]) --> DiscordBot[Discord Bot Gateway]
+    DiscordBot --> Planner[Gemini Planner]
     Planner --> Risk[Risk Engine]
     Risk -- Approved --> Executor[Deterministic Executor]
-    Executor --> Tools[Local Tools]
-    Executor --> Telemetry[Telemetry Logger]
-    Telemetry --> Dashboard[Web Dashboard]
+    Executor --> Tools[Local System Tools]
+    Executor --> Channels[Discord Channel Routing]
+    
+    Channels --> Timeline[#timeline]
+    Channels --> Alerts[#priority-feed]
+    
+    Daemon[Background Daemon] --> Reminders[#reminders & Discord Pings]
 ```
 
 ## 🛠 Getting Started
 
 ### Prerequisites
-- Python 3.10+
-- Google AI Studio API Key
-- Node.js & npm (v18+)
+- Python 3.10+ or Docker Desktop
+- Google Gemini API Key (`LLM_API_KEY`)
+- Discord Bot Token & Guild (Server) ID
+- Discord Webhook URL (for daemon alerts)
 
-### Installation
+### Installation (Docker - Recommended)
+
+Everything runs in a single package using Docker Compose. This runs both the Discord listening bot and the background daemon that handles your reminders.
+
 1. Clone the repository:
    ```bash
    git clone https://github.com/STiFLeR7/personal-agent-os.git
    cd personal-agent-os
    ```
 
-2. Install backend dependencies:
-   ```bash
-   pip install -e .[all]
+2. Setup your `.env` file (see `.env.example`):
+   ```env
+   # LLM
+   LLM_PROVIDER=google
+   LLM_API_KEY=your_gemini_key
+
+   # Discord
+   DISCORD_BOT_TOKEN=your_bot_token
+   DISCORD_GUILD_ID=your_server_id
+   DISCORD_WEBHOOK_URL=your_webhook_url
+   DISCORD_CONSOLE_CHANNEL=console
    ```
 
-3. Setup environment:
+3. Boot the system:
    ```bash
-   cp .env.example .env
-   # Add your LLM_API_KEY to .env
+   docker-compose up -d --build
    ```
-
-4. Initialize the system:
-   ```bash
-   dex init
-   ```
-
-### Usage
-Run a task via CLI:
-```bash
-dex run "save a note called 'Meeting' with 'Discuss Phase 4 roadmap'"
-```
-
-Launch the dashboard:
-1. Start the API: `dex dashboard`
-2. Start the UI: `cd dashboard && npm run dev`
-3. Open `http://localhost:3000`
 
 ## 🛡 Security & Privacy
 Dex implements a **Deterministic Proposal/Execution** split. 
-- **Gemini Proposes**: An LLM generates a structured plan.
+- **Gemini Proposes**: An LLM generates a structured plan based on your Discord command.
 - **Dex Validates**: The Risk Engine checks the plan against security policies.
-- **User Confirms**: High-risk actions (like shell commands) require manual 'Y/N' confirmation.
-- **Dex Executes**: Tools run locally with zero cloud dependence for execution.
+- **You Confirm**: High-risk actions (like shell commands) prompt a confirmation view with Green/Red buttons in Discord.
+- **Dex Executes**: Tools run locally on your machine with zero cloud dependence for execution.
+
+## 📖 How to Use
+Please read the [HOW_TO_USE.md](HOW_TO_USE.md) file for a detailed guide on setting up your Discord server channels, understanding the routing, and examples of what to type to Dex.
 
 ## 📜 License
 MIT License. See [LICENSE](LICENSE) for details.

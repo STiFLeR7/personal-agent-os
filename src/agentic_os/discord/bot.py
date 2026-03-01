@@ -36,6 +36,7 @@ from agentic_os.tools import (
     ReminderListTool,
     ReminderSetTool,
     ShellCommandTool,
+    GenericChatTool,
     get_tool_registry,
 )
 
@@ -175,21 +176,20 @@ class DexCog(commands.GroupCog, name="dex"):
             if risk_report.risk_level == "high":
                 self.bot.pending_confirmations[str(task.id)] = PendingPlan(str(task.id), plan, interaction)
                 
-                await interaction.followup.send(
-                    embed=build_embed(
-                        DexEmbedPayload(
-                            title="Dex • High Risk Action Required",
-                            summary="This task requires high-risk operations. Please confirm execution.",
-                            risk_level="high",
-                            execution_plan=[f"{s.order}. {s.description}" for s in plan.steps],
-                            tools_used=list(set(s.tool_name for s in plan.steps)),
-                            latency_ms=None,
-                            token_usage=None,
-                            verification_status="pending_confirmation",
-                        )
-                    ),
-                    view=ConfirmView(self.bot, str(task.id)),
+                embed_payload = build_embed(
+                    DexEmbedPayload(
+                        title="Dex • High Risk Action Required",
+                        summary="This task requires high-risk operations. Please confirm execution.",
+                        risk_level="high",
+                        execution_plan=[f"{s.order}. {s.description}" for s in plan.steps],
+                        tools_used=list(set(s.tool_name for s in plan.steps)),
+                        latency_ms=None,
+                        token_usage=None,
+                        verification_status="pending_confirmation",
+                    )
                 )
+                await interaction.followup.send(embed=embed_payload, view=ConfirmView(self.bot, str(task.id)))
+                await self.bot._post_to_channel("priority-feed", embed_payload)
             else:
                 await interaction.followup.send(
                     embed=build_embed(
@@ -209,20 +209,20 @@ class DexCog(commands.GroupCog, name="dex"):
                 result = await self.bot._executor.execute_plan(plan)
                 verification = await self.bot._verifier.verify_execution(plan, result)
                 
-                await interaction.followup.send(
-                    embed=build_embed(
-                        DexEmbedPayload(
-                            title="Dex • Task Complete",
-                            summary=verification.summary,
-                            risk_level=risk_report.risk_level,
-                            execution_plan=[f"{s.order}. {s.description}" for s in plan.steps],
-                            tools_used=list(set(s.tool_name for s in plan.steps)),
-                            latency_ms=result.latency_ms,
-                            token_usage=str(result.token_usage),
-                            verification_status="verified" if verification.success else "failed",
-                        )
+                embed_payload = build_embed(
+                    DexEmbedPayload(
+                        title="Dex • Task Complete",
+                        summary=verification.summary,
+                        risk_level=risk_report.risk_level,
+                        execution_plan=[f"{s.order}. {s.description}" for s in plan.steps],
+                        tools_used=list(set(s.tool_name for s in plan.steps)),
+                        latency_ms=result.latency_ms,
+                        token_usage=str(result.token_usage),
+                        verification_status="verified" if verification.success else "failed",
                     )
                 )
+                await interaction.followup.send(embed=embed_payload)
+                await self.bot._post_to_channel("timeline", embed_payload)
 
         except Exception as e:
             logger.error(f"Error processing command: {e}")
@@ -301,20 +301,20 @@ class ConfirmView(discord.ui.View):
         result = await self.bot._executor.execute_plan(pending.plan)
         verification = await self.bot._verifier.verify_execution(pending.plan, result)
         
-        await interaction.followup.send(
-            embed=build_embed(
-                DexEmbedPayload(
-                    title="Dex • Task Complete",
-                    summary=verification.summary,
-                    risk_level="high",
-                    execution_plan=[f"{s.order}. {s.description}" for s in pending.plan.steps],
-                    tools_used=list(set(s.tool_name for s in pending.plan.steps)),
-                    latency_ms=result.latency_ms,
-                    token_usage=str(result.token_usage),
-                    verification_status="verified" if verification.success else "failed",
-                )
+        embed_payload = build_embed(
+            DexEmbedPayload(
+                title="Dex • Task Complete",
+                summary=verification.summary,
+                risk_level="high",
+                execution_plan=[f"{s.order}. {s.description}" for s in pending.plan.steps],
+                tools_used=list(set(s.tool_name for s in pending.plan.steps)),
+                latency_ms=result.latency_ms,
+                token_usage=str(result.token_usage),
+                verification_status="verified" if verification.success else "failed",
             )
         )
+        await interaction.followup.send(embed=embed_payload)
+        await self.bot._post_to_channel("timeline", embed_payload)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -338,6 +338,17 @@ class DexDiscordBot(commands.Bot):
         self._verifier: Optional[VerifierAgent] = None
         self._risk_engine = RiskEngine()
         self._memory = ContextMemoryEngine()
+
+    async def _post_to_channel(self, channel_name: str, embed: "discord.Embed") -> None:
+        """Helper to post to a specific channel by name."""
+        for guild in self.guilds:
+            for channel in guild.text_channels:
+                if channel.name == channel_name:
+                    try:
+                        await channel.send(embed=embed)
+                        return
+                    except Exception as e:
+                        logger.error(f"Failed to post to {channel_name}: {e}")
 
     async def setup_hook(self) -> None:
         # Load Cogs
@@ -379,6 +390,7 @@ class DexDiscordBot(commands.Bot):
             EmailComposeTool(),
             BrowserOpenTool(),
             AppLaunchTool(),
+            GenericChatTool(),
         ]
         for tool in tools:
             try:

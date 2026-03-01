@@ -48,7 +48,13 @@ memory = ContextMemoryEngine()
 
 @app.get("/")
 async def root():
-    return {"status": "online", "agent": "Dex Cognitive OS"}
+    return {"status": "online", "agent": "Dex Cognitive Bot"}
+
+@app.get("/health")
+async def health():
+    """Endpoint for Render to check if the service is alive."""
+    return {"status": "ok", "timestamp": datetime.now().isoformat()}
+
 
 @app.get("/reminders")
 async def get_reminders():

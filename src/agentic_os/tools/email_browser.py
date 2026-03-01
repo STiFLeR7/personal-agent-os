@@ -1,14 +1,17 @@
 """
-Gmail and email integration tools (Phase 3 - Stubs).
+Gmail and email integration tools (Phase 3 - Implementation).
 
-Framework for Gmail API integration ready for v0.3.
+Framework for Gmail API integration and direct SMTP composition.
 """
 
 from typing import Any, Optional
-
+import asyncio
 from pydantic import Field
+from loguru import logger
 
 from agentic_os.tools.base import Tool, ToolInput, ToolOutput
+from agentic_os.notifications.email_notifier import EmailNotifier
+from agentic_os.notifications.base import Notification
 
 
 class EmailComposeInput(ToolInput):
@@ -23,17 +26,19 @@ class EmailComposeOutput(ToolOutput):
     """Output from email composition."""
 
     draft_id: Optional[str] = Field(default=None, description="Draft message ID")
+    sent_to: Optional[str] = Field(default=None, description="Recipient email address")
 
 
 class EmailComposeTool(Tool):
-    """Tool for composing emails (placeholder for Gmail integration)."""
+    """Tool for composing and sending emails via SMTP."""
 
     def __init__(self):
         """Initialize the email compose tool."""
         super().__init__(
             name="email_compose",
-            description="Compose an email (Gmail integration coming in v0.3)",
+            description="Compose and send an email via your configured SMTP server.",
         )
+        self.notifier = EmailNotifier()
 
     @property
     def input_schema(self) -> type[ToolInput]:
@@ -46,12 +51,75 @@ class EmailComposeTool(Tool):
         return EmailComposeOutput
 
     async def execute(self, **kwargs: Any) -> ToolOutput:
-        """Placeholder implementation."""
-        return EmailComposeOutput(
-            success=False,
-            error="Gmail integration coming in v0.3. Please use your email client for now.",
-            draft_id=None,
-        )
+        """Execute the email composition and sending."""
+        recipient = kwargs.get("recipient", "").strip()
+        subject = kwargs.get("subject", "No Subject").strip()
+        body = kwargs.get("body", "").strip()
+
+        if not recipient or not body:
+            return EmailComposeOutput(
+                success=False,
+                error="Recipient and body are required",
+            )
+
+        try:
+            # Check if notifier is configured
+            if not await self.notifier.is_configured():
+                return EmailComposeOutput(
+                    success=False,
+                    error="Email SMTP not configured in .env. Need NOTIFY_EMAIL_FROM and NOTIFY_SMTP_PASSWORD.",
+                )
+
+            # Construct notification object to reuse EmailNotifier logic
+            notification = Notification(
+                title=subject,
+                message=body,
+                priority="normal",
+                tag="email_outbound"
+            )
+
+            # Send email
+            # Note: EmailNotifier.send sends to self by default, 
+            # we should modify it to take a recipient or handle it here.
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+            from agentic_os.config import get_settings
+            
+            settings = get_settings()
+            email_from = settings.notifications.email_from
+            password = settings.notifications.smtp_password
+            server_addr = settings.notifications.smtp_server
+            port = settings.notifications.smtp_port
+
+            msg = MIMEMultipart()
+            msg["From"] = email_from
+            msg["To"] = recipient
+            msg["Subject"] = subject
+            msg.attach(MIMEText(body, "plain"))
+
+            def _send():
+                with smtplib.SMTP(server_addr, port) as server:
+                    server.starttls()
+                    server.login(email_from, password)
+                    server.send_message(msg)
+
+            await asyncio.to_thread(_send)
+
+            logger.info(f"Email sent successfully to {recipient}")
+            return EmailComposeOutput(
+                success=True,
+                sent_to=recipient,
+                data={"recipient": recipient, "subject": subject}
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to send email: {e}")
+            return EmailComposeOutput(
+                success=False,
+                error=f"Email delivery failed: {str(e)}",
+            )
+
 
 
 class BrowserOpenInput(ToolInput):
