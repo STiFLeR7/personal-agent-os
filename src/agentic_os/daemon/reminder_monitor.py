@@ -74,10 +74,8 @@ class ReminderMonitor:
     async def _keep_alive_loop(self):
         """Self-ping loop to prevent Render from spinning down."""
         import aiohttp
-        import os
         
-        # Render provides RENDER_EXTERNAL_URL
-        url = os.environ.get("RENDER_EXTERNAL_URL")
+        url = self.settings.render_external_url
         if not url:
             logger.debug("RENDER_EXTERNAL_URL not set, skipping keep-alive loop")
             return

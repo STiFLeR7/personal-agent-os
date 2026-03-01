@@ -225,6 +225,10 @@ class Settings(BaseSettings):
     dry_run: bool = Field(
         default=False, description="Simulate tool execution without side effects"
     )
+    render_external_url: Optional[str] = Field(
+        default=None, 
+        validation_alias=AliasChoices("RENDER_EXTERNAL_URL", "render_external_url")
+    )
 
     def model_post_init(self, __context):  # type: ignore[no-untyped-def]
         """Create necessary directories after model initialization."""
