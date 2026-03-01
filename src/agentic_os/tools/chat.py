@@ -11,14 +11,19 @@ from agentic_os.config import get_settings
 from agentic_os.tools.base import Tool, ToolInput, ToolOutput
 
 
+from pydantic import Field, AliasChoices
+
 class ChatInput(ToolInput):
     """Input for generic chat queries."""
-    query: str = Field(description="The user's query or conversational prompt.")
+    query: str = Field(
+        description="The user's query or conversational prompt.",
+        validation_alias=AliasChoices("query", "prompt", "text")
+    )
 
 
 class ChatOutput(ToolOutput):
     """Output from the chat query."""
-    response: str = Field(description="The LLM's response to the query.")
+    response: str = Field(default="", description="The LLM's response to the query.")
 
 
 class GenericChatTool(Tool):
@@ -48,7 +53,7 @@ class GenericChatTool(Tool):
             if self.settings.llm.provider == "google" and self.settings.llm.api_key:
                 import google.generativeai as genai
                 genai.configure(api_key=self.settings.llm.api_key)
-                model = genai.GenerativeModel(self.settings.llm.model_name or "gemini-1.5-flash")
+                model = genai.GenerativeModel(self.settings.llm.model_name or "gemini-2.0-flash")
                 response = await model.generate_content_async(query)
                 return ChatOutput(success=True, response=response.text, data={"response": response.text})
             else:

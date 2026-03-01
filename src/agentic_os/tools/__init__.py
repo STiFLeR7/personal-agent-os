@@ -16,6 +16,7 @@ from agentic_os.tools.email_browser import EmailComposeTool, BrowserOpenTool
 from agentic_os.tools.app_tools import AppLaunchTool
 from agentic_os.tools.chat import GenericChatTool
 from agentic_os.tools.time_utils import (
+    TimeTool,
     get_current_time,
     parse_relative_time,
     format_time_since,
@@ -44,6 +45,7 @@ __all__ = [
     "BrowserOpenTool",
     "AppLaunchTool",
     "GenericChatTool",
+    "TimeTool",
     # Time utilities
     "get_current_time",
     "parse_relative_time",
@@ -52,3 +54,4 @@ __all__ = [
     "is_business_hours",
     "get_greeting",
 ]
+
