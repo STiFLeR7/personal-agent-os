@@ -4,7 +4,7 @@ Gmail and email integration tools (Phase 3 - Implementation).
 Framework for Gmail API integration and direct SMTP composition.
 """
 
-from typing import Any, Optional
+from typing import Any, Optional, List
 import asyncio
 from pydantic import Field
 from loguru import logger
@@ -17,7 +17,8 @@ from agentic_os.notifications.base import Notification
 class EmailComposeInput(ToolInput):
     """Input for composing an email."""
 
-    recipient: str = Field(description="Recipient email address")
+    recipient: Optional[str] = Field(default=None, description="Primary recipient email address")
+    recipients: Optional[List[str]] = Field(default=None, description="List of recipient email addresses")
     subject: str = Field(description="Email subject")
     body: str = Field(description="Email body")
 
@@ -52,14 +53,26 @@ class EmailComposeTool(Tool):
 
     async def execute(self, **kwargs: Any) -> ToolOutput:
         """Execute the email composition and sending."""
-        recipient = kwargs.get("recipient", "").strip()
+        # Robustly handle both 'recipient' and 'recipients' from LLM
+        recipient = kwargs.get("recipient")
+        recipients = kwargs.get("recipients")
+        
+        target_recipient = ""
+        if recipient and isinstance(recipient, str):
+            target_recipient = recipient.strip()
+        elif recipients:
+            if isinstance(recipients, list) and len(recipients) > 0:
+                target_recipient = str(recipients[0]).strip()
+            elif isinstance(recipients, str):
+                target_recipient = recipients.strip()
+
         subject = kwargs.get("subject", "No Subject").strip()
         body = kwargs.get("body", "").strip()
 
-        if not recipient or not body:
+        if not target_recipient or not body:
             return EmailComposeOutput(
                 success=False,
-                error="Recipient and body are required",
+                error="Recipient (or recipients[0]) and body are required",
             )
 
         try:
@@ -79,8 +92,6 @@ class EmailComposeTool(Tool):
             )
 
             # Send email
-            # Note: EmailNotifier.send sends to self by default, 
-            # we should modify it to take a recipient or handle it here.
             import smtplib
             from email.mime.text import MIMEText
             from email.mime.multipart import MIMEMultipart
@@ -94,7 +105,7 @@ class EmailComposeTool(Tool):
 
             msg = MIMEMultipart()
             msg["From"] = email_from
-            msg["To"] = recipient
+            msg["To"] = target_recipient
             msg["Subject"] = subject
             msg.attach(MIMEText(body, "plain"))
 
@@ -106,11 +117,11 @@ class EmailComposeTool(Tool):
 
             await asyncio.to_thread(_send)
 
-            logger.info(f"Email sent successfully to {recipient}")
+            logger.info(f"Email sent successfully to {target_recipient}")
             return EmailComposeOutput(
                 success=True,
-                sent_to=recipient,
-                data={"recipient": recipient, "subject": subject}
+                sent_to=target_recipient,
+                data={"recipient": target_recipient, "subject": subject}
             )
 
         except Exception as e:
