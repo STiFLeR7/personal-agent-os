@@ -3,8 +3,11 @@
 import asyncio
 import logging
 import smtplib
+import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
+from pathlib import Path
 from agentic_os.notifications.base import NotificationHandler, Notification
 from agentic_os.config import load_config
 
@@ -22,6 +25,7 @@ class EmailNotifier(NotificationHandler):
             self.smtp_server = config.notifications.smtp_server
             self.smtp_port = config.notifications.smtp_port
             self.smtp_password = config.notifications.smtp_password
+            self.workspace_root = config.workspace_root
         except Exception as e:
             logger.warning(f"Failed to load email config: {e}")
             self.email_from = None
@@ -30,7 +34,7 @@ class EmailNotifier(NotificationHandler):
     
     async def send(self, notification: Notification) -> bool:
         """
-        Send notification via email with a catchy HTML UI.
+        Send notification via email with a professional structured UI.
         """
         if not await self.is_configured():
             logger.warning("Email notifier not configured")
@@ -38,44 +42,61 @@ class EmailNotifier(NotificationHandler):
         
         try:
             # Create email message
-            msg = MIMEMultipart("alternative")
-            msg["From"] = self.email_from
+            msg = MIMEMultipart("related")
+            msg["From"] = f"Dex Cognitive Bot <{self.email_from}>"
             msg["To"] = self.email_from  # Send to self
-            msg["Subject"] = f"✨ Dex: {notification.title}"
+            msg["Subject"] = notification.title
             
-            # Catchy HTML Template
+            msg_alternative = MIMEMultipart("alternative")
+            msg.attach(msg_alternative)
+
+            # Professional Template (Inspired by Uber/Amazon)
+            status_text = notification.tag.upper() if notification.tag else "NOTIFICATION"
+            priority_color = "#3b82f6"  # Blue
+            if notification.priority == "high":
+                priority_color = "#ef4444"  # Red
+            
             html_body = f"""
+            <!DOCTYPE html>
             <html>
-            <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f172a; color: #e2e8f0;">
-                <div style="max-width: 600px; margin: 20px auto; background-color: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);">
-                    <!-- Header -->
-                    <div style="background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%); padding: 20px; text-align: center;">
-                        <h1 style="margin: 0; color: white; font-size: 24px; letter-spacing: 1px;">DEX COGNITIVE BOT</h1>
-                    </div>
-                    
-                    <!-- Content -->
-                    <div style="padding: 30px;">
-                        <h2 style="color: #3b82f6; margin-top: 0;">{notification.title}</h2>
-                        <div style="line-height: 1.6; color: #94a3b8; font-size: 16px; background-color: #0f172a; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                            {notification.message.replace('\\n', '<br>')}
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body {{ margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6; }}
+                    .container {{ max-width: 600px; margin: 0 auto; background-color: #f3f4f6; padding: 40px 20px; }}
+                    .card {{ background-color: #ffffff; border-radius: 0; overflow: hidden; }}
+                    .header {{ background-color: #000000; padding: 20px 40px; display: flex; align-items: center; }}
+                    .header img {{ height: 30px; margin-right: 15px; vertical-align: middle; }}
+                    .header span {{ color: #ffffff; font-size: 18px; font-weight: 500; vertical-align: middle; letter-spacing: 0.5px; }}
+                    .content {{ padding: 40px; }}
+                    .status {{ font-size: 12px; font-weight: 700; color: #6b7280; letter-spacing: 1px; margin-bottom: 15px; text-transform: uppercase; }}
+                    .title {{ font-size: 28px; font-weight: 700; color: #111827; margin: 0 0 25px 0; line-height: 1.2; }}
+                    .body-text {{ font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 30px; }}
+                    .footer {{ padding: 20px 40px; text-align: left; font-size: 12px; color: #9ca3af; }}
+                    .divider {{ height: 1px; background-color: #e5e7eb; margin: 0 40px; }}
+                    .priority-badge {{ display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; color: white; background-color: {priority_color}; margin-top: 10px; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="card">
+                        <div class="header">
+                            <img src="cid:dex_logo" alt="Dex">
+                            <span>Dex Support</span>
                         </div>
-                        
-                        <div style="margin-top: 30px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #334155; padding-top: 20px;">
-                            <div>
-                                <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; background-color: #3b82f6; color: white; text-transform: uppercase;">
-                                    {notification.priority}
-                                </span>
+                        <div class="content">
+                            <div class="status">{status_text}</div>
+                            <h1 class="title">{notification.title}</h1>
+                            <div class="body-text">
+                                {notification.message.replace('\\n', '<br>')}
                             </div>
-                            <div style="font-size: 12px; color: #64748b;">
-                                Ref: {notification.tag or 'System'}
-                            </div>
+                            <div class="priority-badge">{notification.priority.upper()}</div>
                         </div>
-                    </div>
-                    
-                    <!-- Footer -->
-                    <div style="background-color: #0f172a; padding: 15px; text-align: center; font-size: 11px; color: #475569;">
-                        Processed autonomously by your personal assistant.<br>
-                        Local-First • Privacy-Focused • Intelligent
+                        <div class="divider"></div>
+                        <div class="footer">
+                            &copy; 2026 Dex Cognitive OS. Local-first, Privacy-focused.<br>
+                            This is an automated message from your personal AI operator.
+                        </div>
                     </div>
                 </div>
             </body>
@@ -83,15 +104,24 @@ class EmailNotifier(NotificationHandler):
             """
             
             # Plain text fallback
-            text_body = f"Dex: {notification.title}\n\n{notification.message}\n\nPriority: {notification.priority}"
+            text_body = f"Dex: {notification.title}\n\n{notification.message}\n\nPriority: {notification.priority}\nStatus: {status_text}"
             
-            msg.attach(MIMEText(text_body, "plain"))
-            msg.attach(MIMEText(html_body, "html"))
+            msg_alternative.attach(MIMEText(text_body, "plain"))
+            msg_alternative.attach(MIMEText(html_body, "html"))
+            
+            # Embed Logo
+            logo_path = Path(self.workspace_root) / "assets" / "dex-icon.png"
+            if logo_path.exists():
+                with open(logo_path, "rb") as f:
+                    logo_img = MIMEImage(f.read())
+                    logo_img.add_header("Content-ID", "<dex_logo>")
+                    logo_img.add_header("Content-Disposition", "inline", filename="dex-icon.png")
+                    msg.attach(logo_img)
             
             # Send email in background thread
             await asyncio.to_thread(self._send_smtp, msg)
             
-            logger.info(f"HTML Email notification sent: {notification.title}")
+            logger.info(f"Professional HTML Email notification sent: {notification.title}")
             return True
             
         except Exception as e:
