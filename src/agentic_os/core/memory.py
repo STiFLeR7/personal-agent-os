@@ -23,10 +23,12 @@ except ImportError:
     HAS_SEMANTIC = False
     logger.warning("sentence-transformers not installed. Semantic memory will be limited to keyword search.")
 
+import os
 from agentic_os.config import get_settings
 
 
 class MemoryEntry(BaseModel):
+    # ... rest of MemoryEntry ...
     """A single item in memory."""
 
     id: Optional[int] = None
@@ -47,13 +49,18 @@ class ContextMemoryEngine:
         self.db_path = db_path or settings.data_dir / "memory.db"
         self._init_db()
         self.model = None
-        if HAS_SEMANTIC:
+        
+        disable_semantic = os.environ.get("DISABLE_SEMANTIC_MEMORY", "false").lower() in ("true", "1")
+        
+        if HAS_SEMANTIC and not disable_semantic:
             try:
                 # Use a lightweight model for speed
                 self.model = SentenceTransformer('all-MiniLM-L6-v2')
                 logger.info("Semantic memory engine initialized with all-MiniLM-L6-v2")
             except Exception as e:
                 logger.error(f"Failed to load embedding model: {e}")
+        elif disable_semantic:
+            logger.info("Semantic memory explicitly disabled via DISABLE_SEMANTIC_MEMORY")
 
     def _init_db(self) -> None:
         """Initialize SQLite database tables."""

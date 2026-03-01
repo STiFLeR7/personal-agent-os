@@ -34,6 +34,7 @@ dependencies = [
     "python-dotenv>=1.0.0",     # Environment variable management
     "fastapi>=0.100.0",         # Web API
     "uvicorn>=0.23.0",          # ASGI server
+    "numpy>=1.24.0",            # Vector operations for memory
 ]
 
 [project.optional-dependencies]
