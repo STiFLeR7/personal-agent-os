@@ -82,11 +82,9 @@ Issues = "https://github.com/STiFLeR7/personal-agent-os/issues"
 dex = "agentic_os.cli:main"
 agentic-os = "agentic_os.cli:main"  # Backward compatibility
 
-[tool.setuptools]
-packages = ["agentic_os"]
-
-[tool.setuptools.package-dir]
-"" = "src"
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["agentic_os*"]
 
 [tool.black]
 line-length = 100
