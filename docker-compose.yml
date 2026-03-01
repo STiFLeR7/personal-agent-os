@@ -12,5 +12,5 @@ services:
     environment:
       - PORT=8000
       # RENDER_EXTERNAL_URL is only needed on Render, but can be set here if using a tunnel
-      - RENDER_EXTERNAL_URL=http://localhost:8000
+      - RENDER_EXTERNAL_URL=https://dex-h6tm.onrender.com
 

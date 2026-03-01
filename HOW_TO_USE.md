@@ -32,9 +32,14 @@ This boots **two** things:
 
 *(Make sure you have created a Discord Webhook in your server settings and pasted the URL into `DISCORD_WEBHOOK_URL` inside your `.env` file).*
 
----
+### 3. Deploying to Render
+1.  **Service Type**: Web Service
+2.  **Runtime**: Docker
+3.  **Plan**: Free
+4.  **Environment Variables**:
+    *   `RENDER_EXTERNAL_URL`: `https://dex-h6tm.onrender.com`
+    *   All other keys from your `.env` file.
 
-## 3. How to Talk to Dex
 
 Dex uses Slash Commands `/` to understand you. Go to the `#console` channel and type `/dex`. You'll see a list of available commands.
 
