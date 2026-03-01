@@ -23,7 +23,7 @@ from agentic_os.core import (
     VerifierAgent,
     get_state_manager,
 )
-from agentic_os.coordination.messages import Message, MessageType
+from agentic_os.coordination.messages import ExecutionPlan, Message, MessageType
 from agentic_os.tools.base import get_tool_registry
 from agentic_os.tools import (
     ShellCommandTool,
@@ -493,7 +493,7 @@ def daemon(interval: int) -> None:
 @click.option(
     "--channel",
     "-c",
-    type=click.Choice(["desktop", "email", "whatsapp", "all"]),
+    type=click.Choice(["desktop", "email", "whatsapp", "discord", "all"]),
     default="all",
     help="Which notification channel to test"
 )
@@ -506,12 +506,14 @@ def notify(channel: str) -> None:
         dex notify --channel desktop   # Test desktop notification
         dex notify --channel email     # Test email notification
         dex notify --channel whatsapp  # Test WhatsApp notification
+        dex notify --channel discord   # Test Discord notification
         dex notify                     # Test all channels
     """
     from agentic_os.notifications.base import Notification
     from agentic_os.notifications.desktop import DesktopNotifier
     from agentic_os.notifications.email_notifier import EmailNotifier
     from agentic_os.notifications.whatsapp_notifier import WhatsAppNotifier
+    from agentic_os.notifications.discord import DiscordNotifier
     
     async def send_test():
         test_notification = Notification(
@@ -535,6 +537,15 @@ def notify(channel: str) -> None:
                     if notifier.available is False
                     else "⚠ Not configured"
                 )
+
+        if channel in ["discord", "all"]:
+            console.print("[cyan]Testing Discord Notifications...[/cyan]")
+            notifier = DiscordNotifier()
+            if await notifier.is_configured():
+                success = await notifier.send(test_notification)
+                results["discord"] = "✓ Success" if success else "✗ Failed"
+            else:
+                results["discord"] = "⚠ Not configured (set LLM_DISCORD_WEBHOOK_URL in .env)"
         
         if channel in ["email", "all"]:
             console.print("[cyan]Testing Email Notifications...[/cyan]")
@@ -582,6 +593,18 @@ def dashboard(port: int) -> None:
         start_server(port=port)
     except KeyboardInterrupt:
         console.print("\n[yellow]Dashboard stopped[/yellow]")
+
+
+@cli.command()
+def discord() -> None:
+    """Start the Dex Discord bot gateway."""
+    from agentic_os.discord import run_discord_bot
+
+    console.print("[bold cyan]🤖 Starting Dex Discord Bot...[/bold cyan]")
+    try:
+        run_discord_bot()
+    except Exception as e:
+        console.print(f"[red]Error starting Discord bot: {e}[/red]")
 
 
 def main() -> None:

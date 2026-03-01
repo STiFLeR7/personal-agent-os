@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  dex-discord:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+    command: ["dex", "discord"]
+    volumes:
+      - ./.agentic_os:/app/.agentic_os

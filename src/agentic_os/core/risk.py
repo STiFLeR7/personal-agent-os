@@ -28,6 +28,11 @@ class RiskScore(BaseModel):
     reasoning: str = Field(description="Explanation for the risk assessment")
     mitigations: List[str] = Field(default_factory=list, description="Suggested mitigations")
 
+    @property
+    def risk_level(self) -> str:
+        """Alias for level value used by some integrations."""
+        return self.level.value
+
 
 class RiskEngine:
     """
@@ -109,6 +114,26 @@ class RiskEngine:
             score=max_score,
             reasoning=f"Aggregate risk based on {len(steps)} steps. Highest risk step is {level.value}."
         )
+
+    def analyze_plan(self, plan: Any) -> RiskScore:
+        """
+        Analyze a plan and return a risk report. 
+        Compatibility method for high-level callers like Discord.
+        """
+        from agentic_os.coordination.messages import ExecutionPlan
+        
+        if isinstance(plan, ExecutionPlan):
+            steps = [s.model_dump() for s in plan.steps]
+        elif isinstance(plan, list):
+            steps = plan
+        else:
+            # Try to model_dump if it's a Pydantic model
+            try:
+                steps = plan.model_dump().get("steps", [])
+            except Exception:
+                steps = []
+
+        return self.evaluate_plan(steps)
 
     def requires_confirmation(self, risk: RiskScore) -> bool:
         """

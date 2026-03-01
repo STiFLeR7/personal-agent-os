@@ -148,6 +148,19 @@ class ExecutionResult(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
+class TaskExecutionResult(BaseModel):
+    """Result of executing an entire plan."""
+
+    task_id: UUID = Field(description="ID of task")
+    plan_id: UUID = Field(description="ID of executed plan")
+    success: bool = Field(description="Whether all steps succeeded")
+    step_results: List[ExecutionResult] = Field(default_factory=list)
+    latency_ms: int = Field(description="Total execution time")
+    token_usage: Dict[str, int] = Field(
+        default_factory=lambda: {"total": 0}, description="Token usage summary"
+    )
+
+
 class VerificationResult(BaseModel):
     """Result of verifying plan execution."""
 
@@ -160,3 +173,12 @@ class VerificationResult(BaseModel):
     )
     verified_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     verified_by: str = Field(description="Agent that performed verification")
+
+
+class TaskVerification(BaseModel):
+    """High-level verification summary for UI/Discord."""
+
+    success: bool = Field(description="Whether verification passed")
+    summary: str = Field(description="Human-readable summary of result")
+    issues: List[str] = Field(default_factory=list)
+

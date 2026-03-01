@@ -1,0 +1,12 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY pyproject.toml README.md requirements.txt ./
+COPY src ./src
+
+RUN pip install --no-cache-dir -e ".[llm,discord]"
+
+ENV PYTHONUNBUFFERED=1
+
+CMD ["dex", "discord"]

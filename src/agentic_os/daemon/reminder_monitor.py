@@ -11,6 +11,7 @@ from agentic_os.notifications.base import Notification
 from agentic_os.notifications.desktop import DesktopNotifier
 from agentic_os.notifications.email_notifier import EmailNotifier
 from agentic_os.notifications.whatsapp_notifier import WhatsAppNotifier
+from agentic_os.notifications.discord import DiscordNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ class ReminderMonitor:
         self.desktop_notifier = DesktopNotifier()
         self.email_notifier = EmailNotifier()
         self.whatsapp_notifier = WhatsAppNotifier()
+        self.discord_notifier = DiscordNotifier()
         
         # Track sent notifications
         self.sent_notifications = set()
@@ -151,6 +153,7 @@ class ReminderMonitor:
             "desktop": await self.desktop_notifier.send(notification),
             "email": await self.email_notifier.send(notification),
             "whatsapp": await self.whatsapp_notifier.send(notification),
+            "discord": await self.discord_notifier.send(notification),
         }
         
         success_channels = [ch for ch, ok in results.items() if ok]

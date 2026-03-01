@@ -16,6 +16,7 @@ from agentic_os.coordination.messages import (
     ExecutionResult,
     Message,
     MessageType,
+    TaskExecutionResult,
 )
 from agentic_os.core.agents import StatefulAgent
 from agentic_os.core.state import get_state_manager
@@ -40,6 +41,40 @@ class ExecutorAgent(StatefulAgent):
         super().__init__(agent_id, "executor")
         self.state_manager = get_state_manager()
         self.telemetry = TelemetryManager()
+
+    async def execute_plan(self, plan: ExecutionPlan) -> TaskExecutionResult:
+        """
+        Execute a plan and return results (synchronous convenience method).
+        Used by high-level interfaces like Discord bot.
+        """
+        start_time = time.time()
+        step_results = []
+        all_success = True
+
+        logger.info(f"Executing plan {plan.id} with {len(plan.steps)} steps")
+
+        for step in plan.steps:
+            logger.debug(f"Executing step {step.order}: {step.description}")
+            result = await self._execute_step(step)
+            step_results.append(result)
+            
+            if not result.success:
+                all_success = False
+                logger.error(f"Step {step.id} failed: {result.error}")
+                # We continue to other steps if they don't depend on this one, 
+                # but for simplicity in synchronous execution we can choose to stop.
+                # However, to match the agent behavior we should probably continue or handle dependencies.
+
+        duration_ms = int((time.time() - start_time) * 1000)
+        
+        return TaskExecutionResult(
+            task_id=plan.task_id,
+            plan_id=plan.id,
+            success=all_success,
+            step_results=step_results,
+            latency_ms=duration_ms,
+            token_usage={"total": 0}  # Placeholder for now
+        )
 
     async def _register_message_handlers(self) -> None:
         """Register handlers for execution requests."""

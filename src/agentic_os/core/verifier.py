@@ -12,8 +12,11 @@ from uuid import UUID
 from loguru import logger
 
 from agentic_os.coordination.messages import (
+    ExecutionPlan,
     Message,
     MessageType,
+    TaskExecutionResult,
+    TaskVerification,
     VerificationResult,
 )
 from agentic_os.core.agents import StatefulAgent
@@ -33,6 +36,35 @@ class VerifierAgent(StatefulAgent):
     def __init__(self, agent_id: str = "verifier"):
         """Initialize the verifier agent."""
         super().__init__(agent_id, "verifier")
+
+    async def verify_execution(self, plan: ExecutionPlan, result: TaskExecutionResult) -> TaskVerification:
+        """
+        Verify execution results (synchronous convenience method).
+        Used by high-level interfaces like Discord bot.
+        """
+        logger.info(f"Verifying execution of task {plan.task_id}")
+
+        # Adapt result for _verify_execution
+        results_map = {str(r.step_id): r.model_dump() for r in result.step_results}
+        trace = {
+            "steps_executed": [r.model_dump() for r in result.step_results],
+            "errors": [{"step_id": str(r.step_id), "error": r.error} for r in result.step_results if not r.success]
+        }
+
+        # Use internal verification logic
+        verification = await self._verify_execution(
+            str(plan.id), str(plan.task_id), results_map, trace
+        )
+
+        summary = "Task completed successfully." if verification.verified else "Task completed with issues."
+        if verification.issues:
+            summary += " Issues: " + "; ".join(verification.issues)
+
+        return TaskVerification(
+            success=verification.verified,
+            summary=summary,
+            issues=verification.issues
+        )
 
     async def _register_message_handlers(self) -> None:
         """Register handlers for verification requests."""

@@ -42,6 +42,9 @@ class LLMConfig(BaseSettings):
     api_key: Optional[str] = Field(
         default=None, description="API key for the provider (e.g., Google AI Studio key)"
     )
+    discord_webhook_url: Optional[str] = Field(
+        default=None, description="Discord Webhook URL for alerts and reminders"
+    )
     base_url: Optional[str] = Field(
         default=None, description="Base URL for API (e.g., http://localhost:11434)"
     )
@@ -101,6 +104,36 @@ class ToolsConfig(BaseSettings):
         default=None, description="Path to Chrome/Chromium executable"
     )
     browser_headless: bool = Field(default=False, description="Run browser in headless mode")
+
+
+class DiscordConfig(BaseSettings):
+    """Configuration for Discord bot and webhook integration."""
+
+    model_config = SettingsConfigDict(env_prefix="DISCORD_")
+
+    bot_token: Optional[str] = Field(
+        default=None, description="Discord bot token for gateway connection"
+    )
+    guild_id: Optional[int] = Field(
+        default=None,
+        description="Discord guild ID for command registration",
+        validation_alias="DISCORD_SERVER_ID",
+    )
+    webhook_url: Optional[str] = Field(
+        default=None, description="Discord webhook URL for alerts and reminders"
+    )
+    console_channel: str = Field(
+        default="console", description="Channel name for command entry"
+    )
+    timeline_channel: str = Field(
+        default="timeline", description="Channel name for auto-posted timeline"
+    )
+    system_logs_channel: str = Field(
+        default="system-logs", description="Channel name for debug logs"
+    )
+    priority_feed_channel: str = Field(
+        default="priority-feed", description="Channel name for high-risk alerts"
+    )
 
 
 class LoggingConfig(BaseSettings):
@@ -163,12 +196,16 @@ class Settings(BaseSettings):
     logs_dir: Path = Field(
         default_factory=lambda: Path.cwd() / ".agentic_os" / "logs"
     )
+    discord_logs_dir: Path = Field(
+        default_factory=lambda: Path.cwd() / ".agentic_os" / "discord_logs"
+    )
 
     # Subsystem configs
     dex: DexIdentity = Field(default_factory=DexIdentity)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     notifications: NotificationConfig = Field(default_factory=NotificationConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    discord: DiscordConfig = Field(default_factory=DiscordConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
 
@@ -183,6 +220,7 @@ class Settings(BaseSettings):
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.logs_dir.mkdir(parents=True, exist_ok=True)
+        self.discord_logs_dir.mkdir(parents=True, exist_ok=True)
 
         # Enable debug mode logging if requested
         if self.debug_mode:

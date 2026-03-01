@@ -50,6 +50,25 @@ class PlannerAgent(StatefulAgent):
         else:
             self.planning_engine = PlanningEngine()
 
+    async def plan_task(self, task: TaskDefinition) -> Optional[ExecutionPlan]:
+        """
+        Generate a plan for a task (synchronous convenience method).
+        Used by high-level interfaces like Discord bot.
+        """
+        # Get available tools
+        available_tools = self.get_available_tools()
+        self.update_context("available_tools", available_tools)
+
+        # Generate plan (Gemini or Fallback)
+        plan = await self.planning_engine.plan_task(task, available_tools)
+        
+        # If engine returned None (or is base engine), use local rule-based fallback
+        if not plan or plan.created_by == "engine":
+            logger.info("Using rule-based fallback planning")
+            plan = await self._generate_plan_fallback(task, available_tools)
+            
+        return plan
+
     async def _register_message_handlers(self) -> None:
         """Register handlers for plan requests."""
         if self._bus:

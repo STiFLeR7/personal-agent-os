@@ -2,9 +2,11 @@
 .agentic_os/
 .pytest_cache/
 __pycache__/
-docs/
 .vscode
 src/dex.egg-info/
 src/agentic_os.egg-info/
 htmlcov/
 docs/new_sow.txt
+docs/frontend.txt
+docs/discord.md
+.ruff_cache
