@@ -10,6 +10,44 @@ from typing import Optional
 from zoneinfo import ZoneInfo
 
 
+from pydantic import Field
+from agentic_os.tools.base import Tool, ToolInput, ToolOutput
+
+class TimeInput(ToolInput):
+    """Input for getting current time."""
+    timezone: str = Field(default="UTC", description="Timezone name")
+
+class TimeOutput(ToolOutput):
+    """Output containing current time."""
+    current_time: str = Field(description="Formatted current time")
+
+class TimeTool(Tool):
+    """Tool for retrieving current system time."""
+    def __init__(self):
+        super().__init__(
+            name="get_time",
+            description="Get the current system time and date."
+        )
+
+    @property
+    def input_schema(self) -> type[ToolInput]:
+        return TimeInput
+
+    @property
+    def output_schema(self) -> type[ToolOutput]:
+        return TimeOutput
+
+    async def execute(self, **kwargs) -> ToolOutput:
+        tz = kwargs.get("timezone", "UTC")
+        now = get_current_time(tz)
+        formatted = now.strftime("%Y-%m-%d %H:%M:%S %Z")
+        return TimeOutput(
+            success=True,
+            current_time=formatted,
+            data={"time": formatted, "timezone": tz}
+        )
+
+
 def get_current_time(tz: str = "UTC") -> datetime:
     """
     Get current time in specified timezone.

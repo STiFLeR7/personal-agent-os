@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from pydantic import Field
+from pydantic import Field, AliasChoices
 
 from agentic_os.config import get_settings
 from agentic_os.tools.base import Tool, ToolInput, ToolOutput
@@ -17,17 +17,21 @@ from agentic_os.tools.base import Tool, ToolInput, ToolOutput
 class NoteCreateInput(ToolInput):
     """Input for creating a note."""
 
-    title: str = Field(description="Note title")
-    content: str = Field(description="Note content")
-    tags: Optional[str] = Field(default=None, description="Comma-separated tags")
+    content: str = Field(
+        description="Content of the note",
+        validation_alias=AliasChoices("content", "text", "body")
+    )
+    title: str = Field(default="Untitled Note", description="Title of the note")
+    tags: str = Field(default="", description="Comma-separated tags")
 
 
 class NoteCreateOutput(ToolOutput):
-    """Output from note creation."""
+    """Output from creating a note."""
 
-    note_id: str = Field(description="Unique note ID")
-    file_path: str = Field(description="Path where note was stored")
-    created_at: str = Field(description="Creation timestamp")
+    note_id: str = Field(default="", description="Unique identifier for the note")
+    file_path: str = Field(default="", description="Path to the created note file")
+    created_at: str = Field(default="", description="Creation timestamp")
+
 
 
 class NoteCreateTool(Tool):

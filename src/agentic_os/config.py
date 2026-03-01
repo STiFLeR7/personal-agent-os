@@ -39,7 +39,7 @@ class LLMConfig(BaseModel):
         validation_alias=AliasChoices("LLM_PROVIDER", "provider")
     )
     model_name: str = Field(
-        default="gemini-1.5-flash-latest", 
+        default="gemini-2.0-flash", 
         validation_alias=AliasChoices("LLM_MODEL_NAME", "model_name")
     )
 
@@ -256,7 +256,7 @@ def get_settings() -> Settings:
             # If GEMINI_API_KEY is present, default provider to google
             if os.environ.get("GEMINI_API_KEY") or os.environ.get("LLM_API_KEY"):
                 _settings.llm.provider = "google"
-                _settings.llm.model_name = os.environ.get("LLM_MODEL_NAME") or "gemini-1.5-flash"
+                _settings.llm.model_name = os.environ.get("LLM_MODEL_NAME") or "gemini-2.0-flash"
 
         if not _settings.notify.email_from:
             _settings.notify.email_from = os.environ.get("NOTIFY_EMAIL_FROM")

@@ -6,6 +6,7 @@ Google's Gemini models with JSON-schema constrained output.
 """
 
 import json
+import os
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
@@ -44,7 +45,7 @@ class GeminiPlanner(PlanningEngine):
         if self.settings.llm.provider == "google" and self.settings.llm.api_key:
             genai.configure(api_key=self.settings.llm.api_key)
             self.model = genai.GenerativeModel(
-                model_name=self.settings.llm.model_name or "gemini-1.5-flash",
+                model_name=self.settings.llm.model_name or "gemini-2.0-flash",
                 generation_config={"response_mime_type": "application/json"}
             )
         else:
@@ -121,10 +122,16 @@ class GeminiPlanner(PlanningEngine):
         session: Dict[str, Any] = None
     ) -> str:
         """Construct the planning prompt for Gemini with memory context."""
+        import sys
+        os_name = sys.platform
         session_text = json.dumps(session or {}, indent=2)
         return f"""
         You are Dex, a high-performance personal AI operator. 
         Your goal is to decompose the user's request into a deterministic execution plan.
+        
+        SYSTEM ENVIRONMENT:
+        - OS: {os_name}
+        - Current Working Directory: {os.getcwd()}
 
         RELEVANT CONTEXT FROM MEMORY:
         {context if context else "No prior context found."}

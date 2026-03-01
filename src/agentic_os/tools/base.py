@@ -16,7 +16,10 @@ from pydantic import BaseModel, ConfigDict, Field
 class ToolInput(BaseModel):
     """Base class for tool input validation."""
 
-    model_config = ConfigDict(extra="forbid")  # Reject unknown fields
+    model_config = ConfigDict(
+        extra="ignore", # Be permissive with LLM hallucinations
+        populate_by_name=True
+    )
 
 
 class ToolOutput(BaseModel):

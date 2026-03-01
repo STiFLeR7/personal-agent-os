@@ -15,12 +15,15 @@ from agentic_os.config import get_settings
 from agentic_os.tools.base import Tool, ToolInput, ToolOutput
 
 
+from pydantic import Field, AliasChoices
+
 class ReminderSetInput(ToolInput):
     """Input for setting a reminder."""
 
     message: str = Field(description="Reminder message")
     time: str = Field(
-        description="When to remind (e.g., '2h', '3pm', '2025-02-09 15:30', 'tomorrow 10am')"
+        description="When to remind (e.g., '2h', '3pm', '2025-02-09 15:30', 'tomorrow 10am')",
+        validation_alias=AliasChoices("time", "time_delta", "scheduled_time")
     )
     priority: str = Field(
         default="normal", description="Priority: high, normal, low"
@@ -30,9 +33,9 @@ class ReminderSetInput(ToolInput):
 class ReminderSetOutput(ToolOutput):
     """Output from setting a reminder."""
 
-    reminder_id: str = Field(description="Unique reminder ID")
-    scheduled_time: str = Field(description="Scheduled time (ISO format)")
-    time_until: str = Field(description="Time until reminder (e.g., '2h 30m')")
+    reminder_id: str = Field(default="", description="Unique reminder ID")
+    scheduled_time: str = Field(default="", description="Scheduled time (ISO format)")
+    time_until: str = Field(default="", description="Time until reminder (e.g., '2h 30m')")
 
 
 class ReminderSetTool(Tool):
