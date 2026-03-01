@@ -155,6 +155,19 @@ class DexCog(commands.GroupCog, name="dex"):
             )
             return
 
+        # Simple Rate Limiting (5 seconds per user)
+        user_id = interaction.user.id
+        now = datetime.now(timezone.utc)
+        if user_id in self.bot.cooldowns:
+            delta = (now - self.bot.cooldowns[user_id]).total_seconds()
+            if delta < 5:
+                await interaction.response.send_message(
+                    f"⚠️ Please wait {5 - int(delta)}s before your next request.",
+                    ephemeral=True
+                )
+                return
+        self.bot.cooldowns[user_id] = now
+
         await interaction.response.defer()
         log_discord_event(
             "command_received",
@@ -226,7 +239,47 @@ class DexCog(commands.GroupCog, name="dex"):
 
         except Exception as e:
             logger.error(f"Error processing command: {e}")
-            await interaction.followup.send(f"❌ Error: {str(e)}")
+            await interaction.followup.send(
+                embed=build_embed(
+                    DexEmbedPayload(
+                        title="Dex • Task Failed",
+                        summary=f"An error occurred during task processing: {str(e)}",
+                        risk_level="low",
+                        execution_plan=[],
+                        tools_used=[],
+                        latency_ms=None,
+                        token_usage=None,
+                        verification_status="error",
+                    )
+                )
+            )
+
+
+    @app_commands.command(name="telemetry", description="Show Dex system telemetry")
+    async def telemetry(self, interaction: discord.Interaction) -> None:
+        if not self.bot._is_console_channel(interaction):
+            return
+
+        metrics = self.bot.telemetry.get_metrics_summary()
+        
+        embed = build_embed(
+            DexEmbedPayload(
+                title="Dex • System Telemetry",
+                summary="Real-time performance and usage metrics.",
+                risk_level="low",
+                execution_plan=[
+                    f"Total Tasks: {metrics.get('total_executions', 0)}",
+                    f"Success Rate: {metrics.get('success_rate', 0):.1%}",
+                    f"Avg Latency: {metrics.get('avg_duration_ms', 0):.0f}ms",
+                    f"Tokens Used: {metrics.get('total_tokens', 0)}"
+                ],
+                tools_used=list(metrics.get("tool_usage", {}).keys()),
+                latency_ms=None,
+                token_usage=None,
+                verification_status="n/a",
+            )
+        )
+        await interaction.response.send_message(embed=embed)
 
 
 class MemoryCog(commands.GroupCog, name="memory"):
@@ -332,12 +385,15 @@ class DexDiscordBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents, description="Dex AI Personal Operator")
         self.settings = settings
         self.pending_confirmations: Dict[str, PendingPlan] = {}
+        self.cooldowns: Dict[int, datetime] = {}
         self._bus = None
         self._planner: Optional[PlannerAgent] = None
         self._executor: Optional[ExecutorAgent] = None
         self._verifier: Optional[VerifierAgent] = None
         self._risk_engine = RiskEngine()
         self._memory = ContextMemoryEngine()
+        self.telemetry = TelemetryManager()
+
 
     async def _post_to_channel(self, channel_name: str, embed: "discord.Embed") -> None:
         """Helper to post to a specific channel by name."""

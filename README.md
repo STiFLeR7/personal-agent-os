@@ -1,15 +1,48 @@
 # Dex | Your Personal Discord Cognitive Bot
 
-Dex is a local-first, privacy-focused personal AI system that has evolved into a **Discord-native interactive cognitive control plane**. By running Dex locally and interacting with it through your private Discord server, you get a powerful, context-aware personal assistant that transforms natural language requests into deterministic system actions on your machine.
+> **Architecture Version:** v1.0 (Discord-Native Control Plane)  
+> **Deployment:** Render (24/7 uptime)
+
+Dex is a local-first, privacy-focused personal AI system that has evolved into a **Discord-native interactive cognitive control plane**. By running Dex on Render and interacting with it through your private Discord server, you get a powerful, context-aware personal assistant that transforms natural language requests into deterministic system actions.
 
 ## 🚀 Key Features
 
-- **Discord-Native Control**: Interact with your local machine from anywhere using your personal Discord server.
+- **Discord-Native Control**: Interact with your local machine or cloud instance from anywhere using your personal Discord server.
 - **Channel Routing**: Organized output across specific channels (`#console`, `#timeline`, `#priority-feed`, etc.) to reduce spam and keep logs clean.
 - **Gemini Reasoning Layer**: Advanced task decomposition and tool selection with JSON-schema constrained reliability.
 - **Risk Engine**: Three-tier security classification (Low/Medium/High) with human-in-the-loop confirmation directly via Discord UI buttons.
 - **Background Daemon**: A built-in daemon that monitors your reminders and system events, pinging you in Discord when it's time.
-- **Local-First & Private**: All data stays on your machine. Dex only uses Gemini for reasoning, never for data storage.
+- **Local-First & Private**: All data stays on your machine or private instance. Dex only uses Gemini for reasoning, never for data storage.
+
+## 🏗 Why Discord Instead of a Custom Frontend?
+
+Dex moved to a Discord-native interface to prioritize accessibility and reliability:
+- **Built-in Auth & UI**: Leverages Discord's secure infrastructure and polished mobile/desktop apps.
+- **Channel Isolation**: Clear separation between commands (`#console`), audits (`#timeline`), and alerts (`#priority-feed`).
+- **Interactive Confirmations**: native Discord buttons provide a seamless "Human-in-the-Loop" security experience.
+- **Zero UI Maintenance**: Focuses engineering effort on the cognitive core rather than frontend boilerplate.
+
+## 📦 Deployment Modes
+
+| Mode          | Status      |
+| ------------- | ----------- |
+| Local CLI     | Deprecated  |
+| Local Docker  | Supported   |
+| Render (24/7) | Recommended |
+| VPS           | Supported   |
+
+## ✅ Implementation Status
+
+| Feature                       | Status |
+| ----------------------------- | ------ |
+| Gemini JSON Planning          | ✅      |
+| Risk Engine                   | ✅      |
+| Human Confirmation            | ✅      |
+| Reminder Daemon               | ✅      |
+| Email Integration             | ✅      |
+| WhatsApp (Twilio)             | ⏳      |
+| Telemetry Dashboard           | ⏳      |
+| Policy Engine (Advanced Risk) | ⏳      |
 
 ## 🏗 Discord Architecture
 
