@@ -56,6 +56,9 @@ class EmailNotifier(NotificationHandler):
             if notification.priority == "high":
                 priority_color = "#ef4444"  # Red
             
+            # Prepare message for HTML
+            html_message = notification.message.replace('\n', '<br>')
+            
             html_body = f"""
             <!DOCTYPE html>
             <html>
@@ -88,7 +91,7 @@ class EmailNotifier(NotificationHandler):
                             <div class="status">{status_text}</div>
                             <h1 class="title">{notification.title}</h1>
                             <div class="body-text">
-                                {notification.message.replace('\\n', '<br>')}
+                                {html_message}
                             </div>
                             <div class="priority-badge">{notification.priority.upper()}</div>
                         </div>
