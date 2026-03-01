@@ -133,11 +133,20 @@ class EmailNotifier(NotificationHandler):
 
     
     def _send_smtp(self, msg):
-        """Send email via SMTP."""
-        with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-            server.starttls()
-            server.login(self.email_from, self.smtp_password)
-            server.send_message(msg)
+        """Send email via SMTP with robust port handling and timeout."""
+        try:
+            if self.smtp_port == 465:
+                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=10) as server:
+                    server.login(self.email_from, self.smtp_password)
+                    server.send_message(msg)
+            else:
+                with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=10) as server:
+                    server.starttls()
+                    server.login(self.email_from, self.smtp_password)
+                    server.send_message(msg)
+        except Exception as e:
+            logger.error(f"SMTP Error: {e}")
+            raise
     
     async def is_configured(self) -> bool:
         """Check if email notifier is properly configured."""

@@ -125,10 +125,15 @@ class EmailComposeTool(Tool):
             msg.attach(MIMEText(body, "plain"))
 
             def _send():
-                with smtplib.SMTP(server_addr, port) as server:
-                    server.starttls()
-                    server.login(email_from, password)
-                    server.send_message(msg)
+                if port == 465:
+                    with smtplib.SMTP_SSL(server_addr, port, timeout=10) as server:
+                        server.login(email_from, password)
+                        server.send_message(msg)
+                else:
+                    with smtplib.SMTP(server_addr, port, timeout=10) as server:
+                        server.starttls()
+                        server.login(email_from, password)
+                        server.send_message(msg)
 
             await asyncio.to_thread(_send)
 
