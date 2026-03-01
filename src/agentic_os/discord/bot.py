@@ -20,6 +20,7 @@ from loguru import logger
 from agentic_os.config import get_settings
 from agentic_os.core import ExecutorAgent, PlannerAgent, VerifierAgent
 from agentic_os.core.memory import ContextMemoryEngine
+from agentic_os.core.telemetry import TelemetryManager
 from agentic_os.core.risk import RiskEngine
 from agentic_os.coordination.bus import get_bus
 from agentic_os.coordination.messages import TaskDefinition
