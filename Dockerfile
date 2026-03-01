@@ -17,8 +17,9 @@ EXPOSE 8000
 # Script to run all services
 COPY <<EOF /app/start.sh
 #!/bin/bash
-# 1. Start the API in the background (Port 8000)
-python -m agentic_os.api.main --port \$PORT &
+# 1. Start the API in the background
+# Bind to 0.0.0.0 and use the PORT provided by Render
+uvicorn agentic_os.api.main:app --host 0.0.0.0 --port \${PORT:-8000} &
 
 # 2. Start the Reminder Daemon in the background
 dex daemon --interval 30 &

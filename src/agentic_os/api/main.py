@@ -40,7 +40,9 @@ app.add_middleware(
 )
 
 import json
+import os
 from pathlib import Path
+from datetime import datetime
 
 state_manager = get_state_manager()
 telemetry = TelemetryManager()
@@ -193,9 +195,10 @@ async def get_active_tasks():
             tasks.append(exec_state.model_dump())
     return tasks
 
-def start_server(host: str = "0.0.0.0", port: int = 8000):
+def start_server():
     """Start the FastAPI server."""
-    uvicorn.run(app, host=host, port=port)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
     start_server()
