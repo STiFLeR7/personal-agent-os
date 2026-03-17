@@ -5,14 +5,19 @@ This module provides REST endpoints for the Next.js frontend to interact with
 Dex's state, memory, and telemetry.
 """
 
+import json
+import os
+import asyncio
+from pathlib import Path
+from datetime import datetime
+from uuid import uuid4
+from typing import Dict, Any, List
+
+import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
-from typing import Dict, Any, List
-import uvicorn
-import asyncio
-from uuid import uuid4
 from pydantic import BaseModel
 
 from agentic_os.core.state import get_state_manager
@@ -45,12 +50,7 @@ app.add_middleware(
 ROOT_DIR = Path(__file__).parent.parent.parent.parent
 DASHBOARD_DIST = ROOT_DIR / "dex-cognitive-dashboard" / "dist"
 
-# Health and API routes should come BEFORE static files
-import json
-import os
-from pathlib import Path
-from datetime import datetime
-
+# Global managers
 state_manager = get_state_manager()
 telemetry = TelemetryManager()
 memory = ContextMemoryEngine()
