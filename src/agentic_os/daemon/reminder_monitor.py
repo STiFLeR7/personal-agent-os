@@ -2,11 +2,7 @@
 
 import asyncio
 import json
-import logging
-import sys
-from datetime import datetime
-from pathlib import Path
-from typing import Optional
+from loguru import logger
 from agentic_os.notifications.base import Notification
 from agentic_os.notifications.desktop import DesktopNotifier
 from agentic_os.notifications.email_notifier import EmailNotifier
@@ -14,7 +10,8 @@ from agentic_os.notifications.whatsapp_notifier import WhatsAppNotifier
 from agentic_os.notifications.discord import DiscordNotifier
 from agentic_os.notifications.resend_notifier import ResendNotifier
 
-logger = logging.getLogger(__name__)
+# Remove the old logging.getLogger
+# logger = logging.getLogger(__name__)
 
 
 class ReminderMonitor:
@@ -62,7 +59,7 @@ class ReminderMonitor:
                     await self._check_reminders()
                     await self._check_daily_summary()
                 except Exception as e:
-                    logger.error(f"Error in check cycle: {e}", exc_info=True)
+                    logger.error(f"Error in check cycle: {e}")
                 
                 # Sleep before next check
                 await asyncio.sleep(self.check_interval)
@@ -70,7 +67,7 @@ class ReminderMonitor:
             logger.info("Daemon stopped by user")
             self.running = False
         except Exception as e:
-            logger.error(f"Daemon error: {e}", exc_info=True)
+            logger.error(f"Daemon error: {e}")
             self.running = False
 
     async def _keep_alive_loop(self):
@@ -135,10 +132,12 @@ class ReminderMonitor:
         )
         
         # Send to Discord, Email, and Resend
+        logger.info("Attempting to send Daily Summary to all channels...")
         await self.discord_notifier.send(notification)
         await self.email_notifier.send(notification)
         await self.resend_notifier.send(notification)
-        logger.info("Daily summary sent successfully.")
+        logger.info("Daily summary cycle complete.")
+
     
     def stop(self):
         """Stop the reminder monitor daemon."""
