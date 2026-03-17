@@ -20,6 +20,7 @@ class ResendNotifier(NotificationHandler):
         # or verify the domain at resend.com
         self.email_from = "onboarding@resend.dev"
         self.available = self.api_key is not None
+        logger.info(f"ResendNotifier initialized (API Key present: {self.available})")
     
     async def is_configured(self) -> bool:
         """Check if Resend is configured."""
