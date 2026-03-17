@@ -1,7 +1,10 @@
 # Stage 1: Build the React Dashboard
-FROM node:18 AS dashboard-builder
+FROM node:20 AS dashboard-builder
 WORKDIR /dashboard
-COPY dex-cognitive-dashboard/package*.json ./
+COPY dex-cognitive-dashboard/package.json ./
+# Remove lock file if it was copied (though we copy package.json only)
+# but to be safe if COPY includes it.
+RUN rm -f package-lock.json
 RUN npm install
 COPY dex-cognitive-dashboard/ ./
 RUN npm run build
