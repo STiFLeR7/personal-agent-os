@@ -1,5 +1,5 @@
 # Stage 1: Build the React Dashboard
-FROM node:18-slim AS dashboard-builder
+FROM node:18 AS dashboard-builder
 WORKDIR /dashboard
 COPY dex-cognitive-dashboard/package*.json ./
 RUN npm install
