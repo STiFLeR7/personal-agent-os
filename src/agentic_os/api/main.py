@@ -11,7 +11,7 @@ import asyncio
 from pathlib import Path
 from datetime import datetime
 from uuid import uuid4
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
