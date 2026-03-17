@@ -16,7 +16,9 @@ class ResendNotifier(NotificationHandler):
         """Initialize Resend notifier."""
         settings = get_settings()
         self.api_key = settings.notify.resend_api_key
-        self.email_from = settings.notify.email_from or "onboarding@resend.dev"
+        # For Resend, if using a non-verified domain, we must use onboarding@resend.dev
+        # or verify the domain at resend.com
+        self.email_from = "onboarding@resend.dev"
         self.available = self.api_key is not None
     
     async def is_configured(self) -> bool:
