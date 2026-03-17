@@ -5,8 +5,10 @@ This module provides REST endpoints for the Next.js frontend to interact with
 Dex's state, memory, and telemetry.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, FileResponse
 from typing import Dict, Any, List
 import uvicorn
 import asyncio
@@ -39,6 +41,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Root path for finding the dashboard
+ROOT_DIR = Path(__file__).parent.parent.parent.parent
+DASHBOARD_DIST = ROOT_DIR / "dex-cognitive-dashboard" / "dist"
+
+# Health and API routes should come BEFORE static files
 import json
 import os
 from pathlib import Path
@@ -47,10 +54,6 @@ from datetime import datetime
 state_manager = get_state_manager()
 telemetry = TelemetryManager()
 memory = ContextMemoryEngine()
-
-@app.get("/")
-async def root():
-    return {"status": "online", "agent": "Dex Cognitive Bot"}
 
 @app.get("/health")
 async def health():
@@ -195,9 +198,31 @@ async def get_active_tasks():
             tasks.append(exec_state.model_dump())
     return tasks
 
-def start_server():
+# Serve static files from the dashboard
+if DASHBOARD_DIST.exists():
+    app.mount("/assets", StaticFiles(directory=DASHBOARD_DIST / "assets"), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_dashboard(full_path: str):
+        # If it's an API route or asset, let it be handled by those
+        if full_path.startswith("api/") or full_path.startswith("assets/"):
+            raise HTTPException(status_code=404)
+        
+        index_file = DASHBOARD_DIST / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+        
+        return {"status": "online", "message": "Dashboard not built. Run 'npm run build' in dex-cognitive-dashboard."}
+else:
+    @app.get("/")
+    async def root():
+        return {"status": "online", "message": "Dashboard not found. Build it to see the UI."}
+
+
+def start_server(port: Optional[int] = None):
     """Start the FastAPI server."""
-    port = int(os.environ.get("PORT", 8000))
+    if port is None:
+        port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
 
 if __name__ == "__main__":

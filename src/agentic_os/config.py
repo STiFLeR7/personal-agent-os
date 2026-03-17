@@ -149,6 +149,10 @@ class DiscordConfig(BaseModel):
         default="priority-feed", 
         validation_alias=AliasChoices("DISCORD_PRIORITY_FEED_CHANNEL", "priority_feed_channel")
     )
+    reminders_channel: str = Field(
+        default="reminders", 
+        validation_alias=AliasChoices("DISCORD_REMINDERS_CHANNEL", "reminders_channel")
+    )
 
 
 class LoggingConfig(BaseModel):

@@ -185,6 +185,25 @@ class DexCog(commands.GroupCog, name="dex"):
 
         try:
             plan = await self.bot._planner.plan_task(task)
+            
+            if not plan:
+                logger.error("Planner failed to generate a plan.")
+                await interaction.followup.send(
+                    embed=build_embed(
+                        DexEmbedPayload(
+                            title="Dex • Planning Failed",
+                            summary="I couldn't figure out how to handle this request. Please try rephrasing it.",
+                            risk_level="low",
+                            execution_plan=[],
+                            tools_used=[],
+                            latency_ms=None,
+                            token_usage=None,
+                            verification_status="error",
+                        )
+                    )
+                )
+                return
+
             risk_report = self.bot._risk_engine.analyze_plan(plan)
 
             if risk_report.risk_level == "high":
@@ -396,6 +415,15 @@ class DexDiscordBot(commands.Bot):
         self.telemetry = TelemetryManager()
 
 
+    async def on_ready(self) -> None:
+        """Called when the bot is ready."""
+        logger.info(f"✨ Dex Discord Bot is online as {self.user} (ID: {self.user.id})")
+        logger.info(f"📊 Connected to {len(self.guilds)} guilds:")
+        for guild in self.guilds:
+            logger.info(f"   - {guild.name} (ID: {guild.id})")
+        logger.info(f"🛠️ Console Channel: #{self.settings.discord.console_channel}")
+        logger.info(f"📡 Status: Operational")
+
     async def _post_to_channel(self, channel_name: str, embed: "discord.Embed") -> None:
         """Helper to post to a specific channel by name."""
         for guild in self.guilds:
@@ -467,7 +495,10 @@ class DexDiscordBot(commands.Bot):
         channel = interaction.channel
         if channel is None:
             return False
-        return getattr(channel, "name", None) == self.settings.discord.console_channel
+        
+        # Trim target channel name from settings to handle trailing spaces in .env
+        target_channel = self.settings.discord.console_channel.strip()
+        return getattr(channel, "name", None) == target_channel
 
 
 def run_discord_bot() -> None:
