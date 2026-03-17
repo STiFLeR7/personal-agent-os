@@ -12,6 +12,7 @@ from agentic_os.notifications.desktop import DesktopNotifier
 from agentic_os.notifications.email_notifier import EmailNotifier
 from agentic_os.notifications.whatsapp_notifier import WhatsAppNotifier
 from agentic_os.notifications.discord import DiscordNotifier
+from agentic_os.notifications.resend_notifier import ResendNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class ReminderMonitor:
         self.email_notifier = EmailNotifier()
         self.whatsapp_notifier = WhatsAppNotifier()
         self.discord_notifier = DiscordNotifier()
+        self.resend_notifier = ResendNotifier()
         
         # Track sent notifications
         self.sent_notifications = set()
@@ -132,9 +134,10 @@ class ReminderMonitor:
             tag="daily_summary"
         )
         
-        # Send to Discord and Email
+        # Send to Discord, Email, and Resend
         await self.discord_notifier.send(notification)
         await self.email_notifier.send(notification)
+        await self.resend_notifier.send(notification)
         logger.info("Daily summary sent successfully.")
     
     def stop(self):
@@ -225,6 +228,7 @@ class ReminderMonitor:
             "email": await self.email_notifier.send(notification),
             "whatsapp": await self.whatsapp_notifier.send(notification),
             "discord": await self.discord_notifier.send(notification),
+            "resend": await self.resend_notifier.send(notification),
         }
         
         success_channels = [ch for ch, ok in results.items() if ok]

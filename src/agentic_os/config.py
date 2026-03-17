@@ -68,6 +68,10 @@ class NotificationConfig(BaseModel):
         default=False, 
         validation_alias=AliasChoices("NOTIFY_EMAIL_ENABLED", "email_enabled")
     )
+    resend_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("NOTIFY_RESEND_ENABLED", "resend_enabled")
+    )
     whatsapp_enabled: bool = Field(
         default=False, 
         validation_alias=AliasChoices("NOTIFY_WHATSAPP_ENABLED", "whatsapp_enabled")
@@ -89,6 +93,12 @@ class NotificationConfig(BaseModel):
     smtp_password: Optional[str] = Field(
         default=None, 
         validation_alias=AliasChoices("NOTIFY_SMTP_PASSWORD", "smtp_password")
+    )
+
+    # Resend settings
+    resend_api_key: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("RESEND_API_KEY", "resend_api_key")
     )
     
     # WhatsApp/Twilio settings
@@ -283,6 +293,9 @@ def get_settings() -> Settings:
 
         if not _settings.discord.webhook_url:
             _settings.discord.webhook_url = os.environ.get("DISCORD_WEBHOOK_URL") or os.environ.get("LLM_DISCORD_WEBHOOK_URL")
+
+        if not _settings.notify.resend_api_key:
+            _settings.notify.resend_api_key = os.environ.get("RESEND_API_KEY")
 
     return _settings
 
