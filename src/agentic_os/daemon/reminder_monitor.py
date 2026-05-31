@@ -203,7 +203,7 @@ class ReminderMonitor:
         if not summary_msg and self.settings.llm.groq_api_key:
             try:
                 import aiohttp
-                logger.info("尝试使用 Groq 引擎生成摘要...")
+                logger.info("Attempting to generate summary via Groq engine (fallback)...")
                 
                 reminders_text = "\n".join(active_reminders) if active_reminders else "No specific reminders for today."
                 todos_text = "\n".join(pending_todos) if pending_todos else "No pending TODOs."
@@ -241,7 +241,7 @@ class ReminderMonitor:
                         if resp.status == 200:
                             data = await resp.json()
                             summary_msg = data["choices"][0]["message"]["content"].strip()
-                            logger.info("✅ Summary generated via Groq (Llama 3.3).")
+                            logger.info("✅ Summary successfully generated via Groq (Llama 3.3).")
                         else:
                             err = await resp.text()
                             logger.error(f"Groq API failed: {resp.status} - {err}")

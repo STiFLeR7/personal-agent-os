@@ -42,16 +42,34 @@ set -e
 
 echo "🚀 Starting Dex Multi-Service Container..."
 
-# 1. Start the Reminder Daemon in the background
-dex daemon --interval 60 &
+# Function to run the daemon with auto-restart
+run_daemon() {
+    while true; do
+        echo "🤖 Starting Dex Reminder Daemon..."
+        dex daemon --interval 60 || echo "Daemon exited with error"
+        echo "⚠️ Daemon crashed or stopped. Restarting in 10s..."
+        sleep 10
+    done
+}
 
-# 2. Start the Discord Bot in the background
-dex discord &
+# Function to run the bot with auto-restart
+run_bot() {
+    while true; do
+        echo "🤖 Starting Dex Discord Bot..."
+        dex discord || echo "Discord Bot exited with error"
+        echo "⚠️ Discord Bot crashed or stopped. Restarting in 10s..."
+        sleep 10
+    done
+}
+
+# Start background services
+run_daemon &
+run_bot &
 
 echo "Waiting for background services to stabilize..."
 sleep 5
 
-# 3. Start the API in the foreground (serves both API and Dashboard)
+# Start uvicorn in foreground
 echo "📡 Starting API and Dashboard on port \${PORT:-8000}..."
 exec uvicorn agentic_os.api.main:app --host 0.0.0.0 --port \${PORT:-8000}
 EOF
