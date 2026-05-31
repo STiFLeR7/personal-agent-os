@@ -197,27 +197,31 @@ async def get_active_tasks():
         if exec_state:
             tasks.append(exec_state.model_dump())
     return tasks
+# --- Assets & Static Files ---
 
-# Serve static files from the dashboard
-if DASHBOARD_DIST.exists():
-    app.mount("/dashboard-assets", StaticFiles(directory=DASHBOARD_DIST / "assets"), name="dashboard-assets")
-
-# Serve project-level branding assets
+# 1. Project-level branding assets (High Priority)
 PROJECT_ASSETS = ROOT_DIR / "assets"
 if PROJECT_ASSETS.exists():
     app.mount("/assets", StaticFiles(directory=PROJECT_ASSETS), name="assets")
+    logger.info(f"Mounted project assets from {PROJECT_ASSETS}")
 
+# 2. Dashboard static assets
+if DASHBOARD_DIST.exists():
+    app.mount("/dashboard-assets", StaticFiles(directory=DASHBOARD_DIST / "assets"), name="dashboard-assets")
+
+# --- Catch-all Dashboard Route (Must be LAST) ---
 if DASHBOARD_DIST.exists():
     @app.get("/{full_path:path}")
     async def serve_dashboard(full_path: str):
-        # If it's an API route or asset, let it be handled by those
-        if full_path.startswith("api/") or full_path.startswith("assets/") or full_path.startswith("dashboard-assets/"):
+        # Explicitly exclude internal prefixes to prevent infinite loops/404 masking
+        if any(full_path.startswith(p) for p in ["api/", "assets/", "dashboard-assets/", "health"]):
             raise HTTPException(status_code=404)
-        
+
         index_file = DASHBOARD_DIST / "index.html"
         if index_file.exists():
             return FileResponse(index_file)
-        
+        return {"error": "Dashboard index.html not found"}
+
         return {"status": "online", "message": "Dashboard not built. Run 'npm run build' in dex-cognitive-dashboard."}
 else:
     @app.get("/")
