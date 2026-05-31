@@ -1,77 +1,85 @@
 <p align="center">
-  <img src="assets/dex-icon.png" width="120" alt="Dex Logo">
+  <img src="assets/dex-icon.svg" width="160" alt="Dex Logo">
 </p>
 
-<h1 align="center">Dex | Your Personal Discord Cognitive Bot</h1>
+<h1 align="center">Dex | Personal Discord Cognitive Operator</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Architecture-v1.0-blue?style=for-the-badge" alt="v1.0">
+  <img src="https://img.shields.io/badge/Version-v1.2-blue?style=for-the-badge" alt="v1.2">
+  <img src="https://img.shields.io/badge/Architecture-Hermes_Intelligence-purple?style=for-the-badge" alt="Hermes">
   <img src="https://img.shields.io/badge/Deployment-Render_24/7-brightgreen?style=for-the-badge" alt="Render">
-  <img src="https://img.shields.io/badge/LLM-Gemini_2.0_Flash-orange?style=for-the-badge" alt="Gemini 2.0">
 </p>
 
 <p align="center">
-  <strong>A local-first, privacy-focused cognitive control plane optimized for Discord.</strong><br>
-  Dex transforms natural language into deterministic system actions, living entirely within your private Discord server.
+  <strong>An elite, proactive cognitive control plane living in your private Discord.</strong><br>
+  Dex is a dual-core AI operator that manages your digital life through planning, task management, and multi-channel delivery.
+</p>
+
+<p align="center">
+  <img src="assets/dex-banner.svg" width="100%" alt="Dex Banner">
 </p>
 
 ---
 
 ## 📖 Overview
 
-Dex is not just another chatbot; it is a **Cognitive Operating System** wrapper. It bridges the gap between high-level reasoning (LLM) and deterministic execution (Local Tools). By leveraging **Discord** as a native UI, Dex provides an always-accessible, secure, and organized interface for managing your digital life—from setting reminders and taking notes to executing system-level operations.
+Dex is a **Cognitive Operating System** designed for high-performance individuals. It transforms Discord from a chat app into a command center. Unlike traditional bots, Dex uses a **"Hermes-style"** delivery system—it is proactive, branded, and deeply integrated into your server's workflow.
+
+By leveraging **Gemini 2.0 Flash** for reasoning and **Groq (Llama 3.3)** as a high-speed fallback, Dex ensures your personal assistant is always available, always dynamic, and always secure.
 
 ### Why Dex?
-- **Ubiquity**: Access your system from Mobile, Desktop, or Web via Discord.
-- **Reliability**: Uses Gemini 2.0 Flash for structured JSON-based planning.
-- **Security**: Built-in Risk Engine with mandatory Human-in-the-Loop confirmations.
-- **Privacy**: All task execution happens locally or on your private cloud instance.
+- **Proactive Intelligence**: Not just a chatbot; Dex initiates tasks and provides daily briefings.
+- **Dual-Core Brain**: High-fidelity reasoning with Gemini; ultra-fast fallback with Groq.
+- **Branded Interface**: Native Discord embeds with custom branding and "Hermes" messenger layer.
+- **Full Interactivity**: Talk to Dex anywhere—`#console`, `#reminders`, `#priority-feed`, or `#general`.
 
 ---
 
 ## 🏗 Core Architecture
 
-Dex operates on a **Proposal-Execution Split** architecture to ensure safety and precision.
+Dex operates on a **Proposal-Execution-Verification** split architecture.
 
-1.  **Ingestion**: Receives commands via Discord Slash Commands in `#console`.
-2.  **Reasoning**: **Gemini 2.0 Flash** decomposes the request into a structured `ExecutionPlan`.
-3.  **Safety Check**: The **Risk Engine** classifies the task (Low/Medium/High).
-4.  **Confirmation**: High-risk tasks pause for a UI-based button confirmation in `#priority-feed`.
-5.  **Execution**: The **ExecutorAgent** runs the specific Python tools on the host system.
-6.  **Verification**: The **VerifierAgent** audits the result and posts a summary to `#timeline`.
+1.  **Conversational Ingestion**: Mention `@Dex` anywhere or use Slash Commands.
+2.  **Reasoning**: **Gemini 2.0 Flash** (or **Groq**) generates a structured `ExecutionPlan`.
+3.  **Safety Gate**: The **Risk Engine** audits every step for potential system impact.
+4.  **Confirmation**: High-risk tasks pause for a native Discord button confirmation.
+5.  **Autonomous Execution**: The **ExecutorAgent** runs Python-based tools locally.
+6.  **Branded Verification**: Results are verified and posted as rich embeds across your server.
 
 ---
 
 ## 🚀 Key Features
 
-### 📡 Discord-Native Interface
-- **Channel Routing**: Clean separation of concerns between `#console`, `#timeline`, `#priority-feed`, and `#reminders`.
-- **Interactive UI**: native buttons for approving or cancelling dangerous system operations.
-- **Real-time Telemetry**: Monitor system health and performance with `/dex telemetry`.
+### ⚡ Hermes Messenger Layer
+- **Server-Wide Interactivity**: Dex responds to natural language pings in all designated channels.
+- **Dynamic Branded Digest**: A unique, LLM-generated **Morning Intel Digest** at 08:00 AM IST with logo thumbnails and professional formatting.
+- **Multi-Channel Delivery**: Seamless handoff between Discord and professional HTML emails.
 
-### 🧠 Cognitive Capabilities
-- **Gemini 2.0 Planning**: High-confidence tool selection and argument mapping.
-- **Local Memory**: Semantic search and retrieval of past interactions and notes.
-- **Daemon Services**: A background monitor for time-based alerts and daily intel digests.
+### 🧠 Master Task Management
+- **Reminders**: Precision scheduled time-based alerts.
+- **TODOTool**: Persistent daily task tracking and priority management.
+- **Integrated Intelligence**: Your daily summary combines reminders, TODOs, and system health telemetry.
 
-### 📧 Smart Communication
-- **Professional Digests**: Automated **Morning Intel Digest** at 08:00 AM IST.
-- **Catchy Email UI**: High-end HTML email templates for all outbound notifications.
+### 📡 System Operations
+- **Local Memory**: Semantic retrieval of your notes and past task history.
+- **Telemetry**: Real-time performance monitoring via `/dex telemetry`.
+- **Render Stability**: Automated keep-alive loops and process auto-restart for 100% uptime.
 
 ---
 
 ## 📦 Deployment & Setup
 
 ### Render Deployment (Recommended)
-Dex is optimized for **Render Web Services**, staying active 24/7 via a custom keep-alive loop.
+Dex is optimized for **Render**, utilizing a "Double Shield" of stability for the free tier.
 
 1.  **Fork/Clone** the repository.
 2.  Create a new **Web Service** on Render (Docker Runtime).
-3.  Set the following **Environment Variables**:
-    - `RENDER_EXTERNAL_URL`: Your service URL.
-    - `GEMINI_API_KEY`: Your Google AI Studio key.
+3.  Set the following **Environment Variables** (see `dex.env` for full list):
+    - `RENDER_EXTERNAL_URL`: Your public service URL (required for logos).
+    - `GEMINI_API_KEY`: Google AI Studio key.
+    - `GROQ_API_KEY`: Groq console key (backup brain).
     - `DISCORD_BOT_TOKEN`: From Discord Developer Portal.
-    - `NOTIFY_SMTP_PASSWORD`: Google App Password for Gmail.
+    - `NOTIFY_RESEND_ENABLED`: `true` (use Resend for email delivery on Render).
 
 ### Local Docker Setup
 ```bash
@@ -84,19 +92,19 @@ docker-compose up -d --build
 
 | Feature | Status | Description |
 | :--- | :---: | :--- |
-| **Discord Control Plane** | ✅ | Full migration to Discord UI |
-| **Gemini 2.0 Integration** | ✅ | JSON-constrained planning logic |
-| **Catchy Email Engine** | ✅ | Professional HTML template system |
-| **Render Keep-Alive** | ✅ | 24/7 uptime on free tier |
-| **WhatsApp Integration** | ⏳ | Twilio-based notification bridge |
-| **Desktop Dashboard** | ⏳ | Next.js visual telemetry dashboard |
+| **Hermes Interactivity** | ✅ | Server-wide conversational support |
+| **Dual-Core LLM** | ✅ | Gemini 2.0 + Groq (Llama 3.3) fallback |
+| **TODO Engine** | ✅ | Persistent task management system |
+| **Branding Kit** | ✅ | Professional SVG logo and banner integration |
+| **Dashboard UI** | ✅ | React-based visual telemetry interface |
+| **Voice Activation** | ⏳ | Real-time voice command processing |
 
 ---
 
 ## 🛡 Security & Ethics
-- **Deterministic Bounds**: Dex never executes raw shell strings from an LLM without your direct button click.
-- **Local Persistence**: Your notes and reminders stay in `.agentic_os/`, never uploaded to a cloud database.
-- **Zero-Cloud Execution**: Tools run in your local environment; only reasoning is sent to Gemini.
+- **Deterministic Guardrails**: LLMs never execute code directly; they propose plans for the deterministic Executor.
+- **Local-First Privacy**: Your task data stays in `.agentic_os/` on your host environment.
+- **Human-in-the-Loop**: Mandatory button clicks for all system-altering operations.
 
 ---
 

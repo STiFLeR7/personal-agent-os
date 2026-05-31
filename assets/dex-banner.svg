@@ -1,0 +1,15 @@
+<svg width="680" height="240" viewBox="0 0 680 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="680" height="240" fill="#0D1117" />
+  <!-- Background Abstract Patterns -->
+  <path d="M0 120H680" stroke="#34C759" stroke-width="1" opacity="0.1" />
+  <path d="M0 60H680" stroke="#34C759" stroke-width="1" opacity="0.05" />
+  <path d="M0 180H680" stroke="#34C759" stroke-width="1" opacity="0.05" />
+  <circle cx="600" cy="120" r="150" stroke="#34C759" stroke-width="2" opacity="0.1" />
+  
+  <!-- DEX Wordmark -->
+  <text x="40" y="145" fill="#34C759" font-family="Arial, sans-serif" font-weight="bold" font-size="80" letter-spacing="10">DEX</text>
+  <text x="45" y="175" fill="#34C759" font-family="Arial, sans-serif" font-size="14" letter-spacing="4" opacity="0.6">COGNITIVE OPERATING SYSTEM</text>
+  
+  <!-- Right Side Accent -->
+  <path d="M600 40L640 120L600 200" stroke="#34C759" stroke-width="4" stroke-linecap="round" opacity="0.8" />
+</svg>
