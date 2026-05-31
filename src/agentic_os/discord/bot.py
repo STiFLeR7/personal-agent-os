@@ -70,20 +70,8 @@ class DexCog(commands.GroupCog, name="dex"):
             return
 
         current_mode = self.bot._memory.get_session_context("mode") or "default"
-        await interaction.response.send_message(
-            embed=build_embed(
-                DexEmbedPayload(
-                    title="Dex • Status",
-                    summary=f"Dex Discord gateway is online. Active mode: {current_mode}.",
-                    risk_level="low",
-                    execution_plan=[],
-                    tools_used=[],
-                    latency_ms=None,
-                    token_usage=None,
-                    verification_status="n/a",
-                )
-            )
-        )
+        status_text = f"⚡ **Dex Cognitive OS** is online and operational.\n**Active Mode:** `{current_mode}`"
+        await interaction.response.send_message(content=status_text)
 
     @app_commands.command(name="mode", description="Set Dex operating mode")
     @app_commands.describe(mode="Operating mode (e.g. default, creative, strict)")
@@ -93,20 +81,7 @@ class DexCog(commands.GroupCog, name="dex"):
             return
 
         self.bot._memory.set_session_context("mode", mode)
-        await interaction.response.send_message(
-            embed=build_embed(
-                DexEmbedPayload(
-                    title="Dex • Mode Updated",
-                    summary=f"Active mode set to '{mode}'.",
-                    risk_level="low",
-                    execution_plan=[],
-                    tools_used=["session_context"],
-                    latency_ms=None,
-                    token_usage=None,
-                    verification_status="n/a",
-                )
-            )
-        )
+        await interaction.response.send_message(content=f"✅ Active mode updated to `{mode}`.")
 
     @app_commands.command(name="run", description="Run a Dex task")
     @app_commands.describe(command="Task description")
@@ -135,22 +110,13 @@ class DexCog(commands.GroupCog, name="dex"):
 
         metrics = self.bot.telemetry.get_metrics_summary()
         
-        embed = build_embed(
-            DexEmbedPayload(
-                title="Dex • System Telemetry",
-                summary="Real-time performance and usage metrics.",
-                risk_level="low",
-                execution_plan=[
-                    f"Total Tasks: {metrics.get('total_tasks', 0)}",
-                    f"Success Rate: {metrics.get('success_rate', 0):.1%}",
-                ],
-                tools_used=list(metrics.get("tool_usage", {}).keys()),
-                latency_ms=None,
-                token_usage=None,
-                verification_status="n/a",
-            )
+        telemetry_text = (
+            "📊 **Dex System Telemetry**\n"
+            f"• Total Tasks: `{metrics.get('total_tasks', 0)}`\n"
+            f"• Success Rate: `{metrics.get('success_rate', 0):.1%}`\n"
+            f"• Active Tools: `{', '.join(list(metrics.get('tool_usage', {}).keys())) or 'None'}`"
         )
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(content=telemetry_text)
 
 
 class MemoryCog(commands.GroupCog, name="memory"):
@@ -169,26 +135,12 @@ class MemoryCog(commands.GroupCog, name="memory"):
 
         results = self.bot._memory.search_semantic(query, limit=5)
         if not results:
-            summary = "No memory matches found."
-            plan_lines = []
+            response_text = "❌ No memory matches found."
         else:
-            summary = "Top memory matches:"
-            plan_lines = [f"{idx + 1}. {r.content[:120]}" for idx, r in enumerate(results)]
+            matches = "\n".join([f"• {r.content[:120]}..." for r in results])
+            response_text = f"🧠 **Top memory matches for:** `{query}`\n{matches}"
 
-        await interaction.response.send_message(
-            embed=build_embed(
-                DexEmbedPayload(
-                    title="Dex • Memory Search",
-                    summary=summary,
-                    risk_level="low",
-                    execution_plan=plan_lines,
-                    tools_used=["memory_search"],
-                    latency_ms=None,
-                    token_usage=None,
-                    verification_status="n/a",
-                )
-            )
-        )
+        await interaction.response.send_message(content=response_text)
 
 
 class ConfirmView(discord.ui.View):
@@ -223,7 +175,12 @@ class ConfirmView(discord.ui.View):
                 verification_status="verified" if verification.success else "failed",
             )
         )
-        await interaction.followup.send(embed=embed_payload)
+
+        # Reply to user with plain text summary
+        await interaction.followup.send(content=verification.summary)
+
+        # Send technical audit to system-logs and timeline
+        await self.bot._post_to_channel("system-logs", embed_payload)
         await self.bot._post_to_channel("timeline", embed_payload)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
@@ -313,14 +270,20 @@ class DexDiscordBot(commands.Bot):
         try:
             plan = await self._planner.plan_task(task)
             if not plan:
+                err_summary = "I couldn't figure out how to handle this request."
                 err_embed = build_embed(DexEmbedPayload(
                     title="Dex • Planning Failed",
-                    summary="I couldn't figure out how to handle this request.",
+                    summary=err_summary,
                     risk_level="low", execution_plan=[], tools_used=[],
                     latency_ms=None, token_usage=None, verification_status="error"
                 ))
-                if isinstance(target, discord.Interaction): await target.followup.send(embed=err_embed)
-                else: await target.reply(embed=err_embed)
+
+                if isinstance(target, discord.Interaction):
+                    await target.followup.send(content=f"⚠️ {err_summary}")
+                else:
+                    await target.reply(content=f"⚠️ {err_summary}")
+
+                await self._post_to_channel("system-logs", err_embed)
                 return
 
             risk_report = self._risk_engine.analyze_plan(plan)
@@ -335,23 +298,39 @@ class DexDiscordBot(commands.Bot):
                     tools_used=list(set(s.tool_name for s in plan.steps)),
                     latency_ms=None, token_usage=None, verification_status="pending_confirmation"
                 ))
-                if isinstance(target, discord.Interaction): await target.followup.send(embed=embed_payload, view=ConfirmView(self, str(task.id)))
-                else: await target.reply(embed=embed_payload, view=ConfirmView(self, str(task.id)))
+
+                confirm_text = "⚠️ **High-Risk Action Required**\nI've generated a plan that requires manual confirmation. Please review and confirm below."
+                if isinstance(target, discord.Interaction):
+                    await target.followup.send(content=confirm_text, view=ConfirmView(self, str(task.id)))
+                else:
+                    await target.reply(content=confirm_text, view=ConfirmView(self, str(task.id)))
+
                 await self._post_to_channel("priority-feed", embed_payload)
+                await self._post_to_channel("system-logs", embed_payload)
             else:
                 result = await self._executor.execute_plan(plan)
                 verification = await self._verifier.verify_execution(plan, result)
-                embed_payload = build_embed(DexEmbedPayload(
-                    title="Dex • Task Complete",
-                    summary=verification.summary,
-                    risk_level=risk_report.risk_level,
-                    execution_plan=[f"{s.order}. {s.description}" for s in plan.steps],
-                    tools_used=list(set(s.tool_name for s in plan.steps)),
-                    latency_ms=result.latency_ms, token_usage=str(result.token_usage),
-                    verification_status="verified" if verification.success else "failed"
-                ))
-                if isinstance(target, discord.Interaction): await target.followup.send(embed=embed_payload)
-                else: await target.reply(embed=embed_payload)
+                embed_payload = build_embed(
+                    DexEmbedPayload(
+                        title="Dex • Task Complete",
+                        summary=verification.summary,
+                        risk_level=risk_report.risk_level,
+                        execution_plan=[f"{s.order}. {s.description}" for s in plan.steps],
+                        tools_used=list(set(s.tool_name for s in plan.steps)),
+                        latency_ms=result.latency_ms, token_usage=str(result.token_usage),
+                        verification_status="verified" if verification.success else "failed"
+                    )
+                )
+
+                # Reply to user with plain text summary
+                response_text = verification.summary
+                if isinstance(target, discord.Interaction):
+                    await target.followup.send(content=response_text)
+                else:
+                    await target.reply(content=response_text)
+
+                # Send technical audit to system-logs and timeline
+                await self._post_to_channel("system-logs", embed_payload)
                 await self._post_to_channel("timeline", embed_payload)
 
         except Exception as e:

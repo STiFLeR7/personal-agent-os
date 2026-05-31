@@ -72,6 +72,10 @@ sleep 5
 
 # Start uvicorn in foreground
 echo "📡 Starting API and Dashboard on port \${PORT:-8000}..."
+
+# Background trigger to hit health once uvicorn is up
+(sleep 10; curl -s http://localhost:\${PORT:-8000}/health > /dev/null && echo "✅ Initial health trigger successful") &
+
 exec uvicorn agentic_os.api.main:app --host 0.0.0.0 --port \${PORT:-8000}
 EOF
 
