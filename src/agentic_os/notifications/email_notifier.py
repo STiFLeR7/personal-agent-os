@@ -47,6 +47,8 @@ class EmailNotifier(NotificationHandler):
             msg["To"] = self.email_from  # Send to self
             msg["Subject"] = notification.title
             
+            logger.info(f"Delivering SMTP notification to: {self.email_from} (Subject: {notification.title})")
+            
             msg_alternative = MIMEMultipart("alternative")
             msg.attach(msg_alternative)
 

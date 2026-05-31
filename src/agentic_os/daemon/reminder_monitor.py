@@ -92,14 +92,17 @@ class ReminderMonitor:
         
         while self.running:
             try:
-                # Wait 10 minutes (Render timeout is 15)
-                await asyncio.sleep(600)
                 async with aiohttp.ClientSession() as session:
                     async with session.get(f"{url}/health") as resp:
                         if resp.status == 200:
                             logger.debug("Pinged self: Stayin' alive! 🕺")
+                        else:
+                            logger.debug(f"Keep-alive ping returned status: {resp.status}")
             except Exception as e:
                 logger.debug(f"Keep-alive ping failed: {e}")
+            
+            # Wait 10 minutes (Render timeout is 15)
+            await asyncio.sleep(600)
 
     async def _check_daily_summary(self):
         """Trigger a daily summary at 8:00 AM IST (02:30 UTC)."""
@@ -373,6 +376,9 @@ Have a productive morning!
             priority=priority,
             tag="reminder"
         )
+        
+        recipient = self.settings.notify.email_from
+        logger.info(f"🔔 Processing reminder: {message} (Recipient: {recipient})")
         
         # Try to send via all configured channels
         results = {

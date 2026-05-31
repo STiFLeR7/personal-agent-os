@@ -88,23 +88,33 @@ class ResendNotifier(NotificationHandler):
         </html>
         """
 
+        settings = get_settings()
+        recipient = settings.notify.email_from
+        
+        # Security/Config Check
+        if not recipient:
+            logger.error("No recipient email configured in settings.notify.email_from")
+            return False
+
         payload = {
             "from": f"Dex <{self.email_from}>",
-            "to": [self.email_from],
+            "to": [recipient],
             "subject": notification.title,
             "html": html_body
         }
+        
+        logger.info(f"Delivering Resend notification to: {recipient} (Subject: {notification.title})")
         
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, headers=headers, json=payload) as response:
                     if response.status in (200, 201):
-                        logger.info(f"Resend notification sent: {notification.title}")
+                        logger.info(f"Resend notification successfully delivered to {recipient}")
                         return True
                     else:
                         error_text = await response.text()
-                        logger.error(f"Failed to send Resend notification: {response.status} - {error_text}")
+                        logger.error(f"Failed to deliver Resend notification to {recipient}: {response.status} - {error_text}")
                         return False
         except Exception as e:
-            logger.error(f"Error sending Resend notification: {e}")
+            logger.error(f"Error during Resend delivery to {recipient}: {e}")
             return False
