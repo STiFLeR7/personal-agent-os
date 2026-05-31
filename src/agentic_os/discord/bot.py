@@ -262,12 +262,25 @@ class DexDiscordBot(commands.Bot):
         if message.author.bot:
             return
 
-        # Respond if pinged or in an interactive channel
-        if self.user.mentioned_in(message) and self._is_interactive_channel(message.channel):
-            clean_content = message.content.replace(f"<@{self.user.id}>", "").replace(f"<@!{self.user.id}>", "").strip()
+        # Check if the bot was pinged
+        bot_pinged = self.user.mentioned_in(message)
+        is_interactive = self._is_interactive_channel(message.channel)
+        
+        logger.debug(f"Message received in #{getattr(message.channel, 'name', 'DM')}: {message.content[:50]}... (Pinged: {bot_pinged}, Interactive: {is_interactive})")
+
+        # Respond if pinged in an interactive channel
+        if bot_pinged and is_interactive:
+            # Use regex to clean ALL bot mentions (id, nickname, etc.)
+            import re
+            clean_content = re.sub(f"<@!?{self.user.id}>", "", message.content).strip()
+            
             if clean_content:
+                logger.info(f"Conversational request from {message.author}: {clean_content}")
                 async with message.channel.typing():
                     await self._process_dex_request(message, clean_content)
+            else:
+                # If just a ping with no text, give a status update
+                await message.reply("⚡ Dex Cognitive OS is online and operational. How can I help?")
         
         await self.process_commands(message)
 
