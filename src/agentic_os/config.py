@@ -270,23 +270,25 @@ def get_settings() -> Settings:
     if _settings is None:
         _settings = Settings()
         
-        # Manual Overrides for Reliability (ensures .env variables are picked up and cleaned)
-        if not _settings.llm.api_key:
-            val = os.environ.get("LLM_API_KEY") or os.environ.get("GEMINI_API_KEY")
-            _settings.llm.api_key = val.strip() if val else None
-        
+        # Manual Overrides for Reliability
         if not _settings.llm.groq_api_key:
             val = os.environ.get("GROQ_API_KEY")
             _settings.llm.groq_api_key = val.strip() if val else None
         
-        if not _settings.llm.provider or _settings.llm.provider == "ollama":
-            # If GEMINI_API_KEY is present, default provider to google
-            if os.environ.get("GEMINI_API_KEY") or os.environ.get("LLM_API_KEY"):
-                _settings.llm.provider = "google"
-                _settings.llm.model_name = os.environ.get("LLM_MODEL_NAME") or "gemini-2.0-flash"
+        # Prefer Groq if key is available, otherwise fall back to Gemini
+        if _settings.llm.groq_api_key:
+            _settings.llm.provider = "groq"
+            _settings.llm.model_name = os.environ.get("LLM_MODEL_NAME") or "llama-3.3-70b-versatile"
+        elif os.environ.get("GEMINI_API_KEY") or os.environ.get("LLM_API_KEY"):
+            _settings.llm.provider = "google"
+            _settings.llm.model_name = os.environ.get("LLM_MODEL_NAME") or "gemini-2.0-flash"
+
+        if not _settings.llm.api_key:
+            val = os.environ.get("LLM_API_KEY") or os.environ.get("GEMINI_API_KEY")
+            _settings.llm.api_key = val.strip() if val else None
 
         if not _settings.notify.email_from:
-            _settings.notify.email_from = os.environ.get("NOTIFY_EMAIL_FROM")
+            _settings.notify.email_from = os.environ.get("NOTIFY_EMAIL_FROM") or "hillaniljppatel@gmail.com"
         
         if not _settings.notify.smtp_password:
             _settings.notify.smtp_password = os.environ.get("NOTIFY_SMTP_PASSWORD")

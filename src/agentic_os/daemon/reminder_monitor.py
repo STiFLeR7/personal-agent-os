@@ -271,7 +271,8 @@ Have a productive morning!
         )
         
         # 4. Delivery: Multi-channel (Discord Bot / Hermes-style)
-        logger.info("Attempting to send Daily Summary to all channels...")
+        recipient = self.settings.notify.email_from
+        logger.info(f"Attempting to send Daily Summary to all channels (Recipient: {recipient})...")
         
         # Use our new Hermes-style bot notifier first
         sent_via_bot = await self.discord_bot_notifier.send(notification)
@@ -279,8 +280,14 @@ Have a productive morning!
             # Fallback to old webhook if bot token method fails
             await self.discord_notifier.send(notification)
             
-        await self.email_notifier.send(notification)
-        await self.resend_notifier.send(notification)
+        # Resend (Modern)
+        if self.settings.notify.resend_api_key:
+            logger.info(f"Delivering via Resend to {recipient}")
+            await self.resend_notifier.send(notification)
+        
+        # Legacy SMTP (Fallback)
+        if self.settings.notify.email_enabled:
+            await self.email_notifier.send(notification)
         
         logger.info("Daily summary cycle complete.")
 
