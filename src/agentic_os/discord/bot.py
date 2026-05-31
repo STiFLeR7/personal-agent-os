@@ -391,15 +391,8 @@ class DexDiscordBot(commands.Bot):
         await self._verifier.initialize(self._bus)
 
     def _is_interactive_channel(self, channel: discord.abc.Messageable) -> bool:
-        if not hasattr(channel, "name"): return False
-        name = channel.name.strip()
-        allowed = [
-            self.settings.discord.console_channel.strip(),
-            self.settings.discord.reminders_channel.strip(),
-            self.settings.discord.priority_feed_channel.strip(),
-            "general"
-        ]
-        return name in allowed
+        # ALLOW ALL CHANNELS FOR DEBUGGING (Hermes everywhere)
+        return True
 
 
 def run_discord_bot() -> None:

@@ -275,13 +275,14 @@ def get_settings() -> Settings:
             val = os.environ.get("GROQ_API_KEY")
             _settings.llm.groq_api_key = val.strip() if val else None
         
-        # Prefer Groq if key is available, otherwise fall back to Gemini
+        # Force Groq if available (Nuclear Option to stop 429s)
         if _settings.llm.groq_api_key:
             _settings.llm.provider = "groq"
-            _settings.llm.model_name = os.environ.get("LLM_MODEL_NAME") or "llama-3.3-70b-versatile"
+            _settings.llm.model_name = "llama-3.3-70b-versatile"
+            logger.info("🧠 Dual-Core: Groq prioritized as primary brain.")
         elif os.environ.get("GEMINI_API_KEY") or os.environ.get("LLM_API_KEY"):
             _settings.llm.provider = "google"
-            _settings.llm.model_name = os.environ.get("LLM_MODEL_NAME") or "gemini-2.0-flash"
+            _settings.llm.model_name = "gemini-2.0-flash"
 
         if not _settings.llm.api_key:
             val = os.environ.get("LLM_API_KEY") or os.environ.get("GEMINI_API_KEY")

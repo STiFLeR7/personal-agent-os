@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY pyproject.toml README.md requirements.txt ./
 COPY src ./src
+COPY assets ./assets
 
 # Install python dependencies
 RUN pip install --no-cache-dir .
