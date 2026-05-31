@@ -270,12 +270,14 @@ def get_settings() -> Settings:
     if _settings is None:
         _settings = Settings()
         
-        # Manual Overrides for Reliability (ensures .env variables are picked up)
+        # Manual Overrides for Reliability (ensures .env variables are picked up and cleaned)
         if not _settings.llm.api_key:
-            _settings.llm.api_key = os.environ.get("LLM_API_KEY") or os.environ.get("GEMINI_API_KEY")
+            val = os.environ.get("LLM_API_KEY") or os.environ.get("GEMINI_API_KEY")
+            _settings.llm.api_key = val.strip() if val else None
         
         if not _settings.llm.groq_api_key:
-            _settings.llm.groq_api_key = os.environ.get("GROQ_API_KEY")
+            val = os.environ.get("GROQ_API_KEY")
+            _settings.llm.groq_api_key = val.strip() if val else None
         
         if not _settings.llm.provider or _settings.llm.provider == "ollama":
             # If GEMINI_API_KEY is present, default provider to google
@@ -290,7 +292,8 @@ def get_settings() -> Settings:
             _settings.notify.smtp_password = os.environ.get("NOTIFY_SMTP_PASSWORD")
 
         if not _settings.discord.bot_token:
-            _settings.discord.bot_token = os.environ.get("DISCORD_BOT_TOKEN")
+            val = os.environ.get("DISCORD_BOT_TOKEN")
+            _settings.discord.bot_token = val.strip() if val else None
             
         if not _settings.discord.guild_id and os.environ.get("DISCORD_GUILD_ID"):
             try:
@@ -299,10 +302,12 @@ def get_settings() -> Settings:
                 pass
 
         if not _settings.discord.webhook_url:
-            _settings.discord.webhook_url = os.environ.get("DISCORD_WEBHOOK_URL") or os.environ.get("LLM_DISCORD_WEBHOOK_URL")
+            val = os.environ.get("DISCORD_WEBHOOK_URL") or os.environ.get("LLM_DISCORD_WEBHOOK_URL")
+            _settings.discord.webhook_url = val.strip() if val else None
 
         if not _settings.notify.resend_api_key:
-            _settings.notify.resend_api_key = os.environ.get("RESEND_API_KEY")
+            val = os.environ.get("RESEND_API_KEY")
+            _settings.notify.resend_api_key = val.strip() if val else None
 
     return _settings
 
