@@ -40,6 +40,7 @@ from agentic_os.tools import (
     GenericChatTool,
     get_tool_registry,
 )
+from agentic_os.tools.todos import TODOTool
 
 if TYPE_CHECKING:
     from agentic_os.coordination.messages import ExecutionPlan
@@ -64,22 +65,8 @@ class DexCog(commands.GroupCog, name="dex"):
 
     @app_commands.command(name="status", description="Show Dex status")
     async def status(self, interaction: discord.Interaction) -> None:
-        if not self.bot._is_console_channel(interaction):
-            await interaction.response.send_message(
-                embed=build_embed(
-                    DexEmbedPayload(
-                        title="Dex • Channel Restricted",
-                        summary="Commands must be issued in the console channel.",
-                        risk_level="low",
-                        execution_plan=[],
-                        tools_used=[],
-                        latency_ms=None,
-                        token_usage=None,
-                        verification_status="blocked",
-                    )
-                ),
-                ephemeral=True,
-            )
+        if not self.bot._is_interactive_channel(interaction.channel):
+            await interaction.response.send_message("⚠️ This command is restricted to interactive channels.", ephemeral=True)
             return
 
         current_mode = self.bot._memory.get_session_context("mode") or "default"
@@ -101,22 +88,8 @@ class DexCog(commands.GroupCog, name="dex"):
     @app_commands.command(name="mode", description="Set Dex operating mode")
     @app_commands.describe(mode="Operating mode (e.g. default, creative, strict)")
     async def mode(self, interaction: discord.Interaction, mode: str) -> None:
-        if not self.bot._is_console_channel(interaction):
-            await interaction.response.send_message(
-                embed=build_embed(
-                    DexEmbedPayload(
-                        title="Dex • Channel Restricted",
-                        summary="Commands must be issued in the console channel.",
-                        risk_level="low",
-                        execution_plan=[],
-                        tools_used=[],
-                        latency_ms=None,
-                        token_usage=None,
-                        verification_status="blocked",
-                    )
-                ),
-                ephemeral=True,
-            )
+        if not self.bot._is_interactive_channel(interaction.channel):
+            await interaction.response.send_message("⚠️ This command is restricted to interactive channels.", ephemeral=True)
             return
 
         self.bot._memory.set_session_context("mode", mode)
@@ -138,22 +111,8 @@ class DexCog(commands.GroupCog, name="dex"):
     @app_commands.command(name="run", description="Run a Dex task")
     @app_commands.describe(command="Task description")
     async def run(self, interaction: discord.Interaction, command: str) -> None:
-        if not self.bot._is_console_channel(interaction):
-            await interaction.response.send_message(
-                embed=build_embed(
-                    DexEmbedPayload(
-                        title="Dex • Channel Restricted",
-                        summary="Commands must be issued in the console channel.",
-                        risk_level="low",
-                        execution_plan=[],
-                        tools_used=[],
-                        latency_ms=None,
-                        token_usage=None,
-                        verification_status="blocked",
-                    )
-                ),
-                ephemeral=True,
-            )
+        if not self.bot._is_interactive_channel(interaction.channel):
+            await interaction.response.send_message("⚠️ This command is restricted to interactive channels.", ephemeral=True)
             return
 
         # Simple Rate Limiting (5 seconds per user)
@@ -162,122 +121,16 @@ class DexCog(commands.GroupCog, name="dex"):
         if user_id in self.bot.cooldowns:
             delta = (now - self.bot.cooldowns[user_id]).total_seconds()
             if delta < 5:
-                await interaction.response.send_message(
-                    f"⚠️ Please wait {5 - int(delta)}s before your next request.",
-                    ephemeral=True
-                )
+                await interaction.response.send_message(f"⚠️ Please wait {5 - int(delta)}s before your next request.", ephemeral=True)
                 return
         self.bot.cooldowns[user_id] = now
 
         await interaction.response.defer()
-        log_discord_event(
-            "command_received",
-            {"command": command, "user_id": interaction.user.id, "channel": interaction.channel_id},
-        )
-
-        await self.bot._ensure_agents()
-
-        task = TaskDefinition(
-            id=uuid.uuid4(),
-            user_request=command,
-            context={"source": "discord", "user_id": str(interaction.user.id)},
-        )
-
-        try:
-            plan = await self.bot._planner.plan_task(task)
-            
-            if not plan:
-                logger.error("Planner failed to generate a plan.")
-                await interaction.followup.send(
-                    embed=build_embed(
-                        DexEmbedPayload(
-                            title="Dex • Planning Failed",
-                            summary="I couldn't figure out how to handle this request. Please try rephrasing it.",
-                            risk_level="low",
-                            execution_plan=[],
-                            tools_used=[],
-                            latency_ms=None,
-                            token_usage=None,
-                            verification_status="error",
-                        )
-                    )
-                )
-                return
-
-            risk_report = self.bot._risk_engine.analyze_plan(plan)
-
-            if risk_report.risk_level == "high":
-                self.bot.pending_confirmations[str(task.id)] = PendingPlan(str(task.id), plan, interaction)
-                
-                embed_payload = build_embed(
-                    DexEmbedPayload(
-                        title="Dex • High Risk Action Required",
-                        summary="This task requires high-risk operations. Please confirm execution.",
-                        risk_level="high",
-                        execution_plan=[f"{s.order}. {s.description}" for s in plan.steps],
-                        tools_used=list(set(s.tool_name for s in plan.steps)),
-                        latency_ms=None,
-                        token_usage=None,
-                        verification_status="pending_confirmation",
-                    )
-                )
-                await interaction.followup.send(embed=embed_payload, view=ConfirmView(self.bot, str(task.id)))
-                await self.bot._post_to_channel("priority-feed", embed_payload)
-            else:
-                await interaction.followup.send(
-                    embed=build_embed(
-                        DexEmbedPayload(
-                            title="Dex • Task Initialized",
-                            summary="Executing low-risk autonomous task.",
-                            risk_level=risk_report.risk_level,
-                            execution_plan=[f"{s.order}. {s.description}" for s in plan.steps],
-                            tools_used=list(set(s.tool_name for s in plan.steps)),
-                            latency_ms=None,
-                            token_usage=None,
-                            verification_status="executing",
-                        )
-                    )
-                )
-                
-                result = await self.bot._executor.execute_plan(plan)
-                verification = await self.bot._verifier.verify_execution(plan, result)
-                
-                embed_payload = build_embed(
-                    DexEmbedPayload(
-                        title="Dex • Task Complete",
-                        summary=verification.summary,
-                        risk_level=risk_report.risk_level,
-                        execution_plan=[f"{s.order}. {s.description}" for s in plan.steps],
-                        tools_used=list(set(s.tool_name for s in plan.steps)),
-                        latency_ms=result.latency_ms,
-                        token_usage=str(result.token_usage),
-                        verification_status="verified" if verification.success else "failed",
-                    )
-                )
-                await interaction.followup.send(embed=embed_payload)
-                await self.bot._post_to_channel("timeline", embed_payload)
-
-        except Exception as e:
-            logger.error(f"Error processing command: {e}")
-            await interaction.followup.send(
-                embed=build_embed(
-                    DexEmbedPayload(
-                        title="Dex • Task Failed",
-                        summary=f"An error occurred during task processing: {str(e)}",
-                        risk_level="low",
-                        execution_plan=[],
-                        tools_used=[],
-                        latency_ms=None,
-                        token_usage=None,
-                        verification_status="error",
-                    )
-                )
-            )
-
+        await self.bot._process_dex_request(interaction, command)
 
     @app_commands.command(name="telemetry", description="Show Dex system telemetry")
     async def telemetry(self, interaction: discord.Interaction) -> None:
-        if not self.bot._is_console_channel(interaction):
+        if not self.bot._is_interactive_channel(interaction.channel):
             return
 
         metrics = self.bot.telemetry.get_metrics_summary()
@@ -288,10 +141,8 @@ class DexCog(commands.GroupCog, name="dex"):
                 summary="Real-time performance and usage metrics.",
                 risk_level="low",
                 execution_plan=[
-                    f"Total Tasks: {metrics.get('total_executions', 0)}",
+                    f"Total Tasks: {metrics.get('total_tasks', 0)}",
                     f"Success Rate: {metrics.get('success_rate', 0):.1%}",
-                    f"Avg Latency: {metrics.get('avg_duration_ms', 0):.0f}ms",
-                    f"Tokens Used: {metrics.get('total_tokens', 0)}"
                 ],
                 tools_used=list(metrics.get("tool_usage", {}).keys()),
                 latency_ms=None,
@@ -312,22 +163,8 @@ class MemoryCog(commands.GroupCog, name="memory"):
     @app_commands.command(name="search", description="Search Dex memory")
     @app_commands.describe(query="Search query")
     async def search(self, interaction: discord.Interaction, query: str) -> None:
-        if not self.bot._is_console_channel(interaction):
-            await interaction.response.send_message(
-                embed=build_embed(
-                    DexEmbedPayload(
-                        title="Dex • Channel Restricted",
-                        summary="Commands must be issued in the console channel.",
-                        risk_level="low",
-                        execution_plan=[],
-                        tools_used=[],
-                        latency_ms=None,
-                        token_usage=None,
-                        verification_status="blocked",
-                    )
-                ),
-                ephemeral=True,
-            )
+        if not self.bot._is_interactive_channel(interaction.channel):
+            await interaction.response.send_message("⚠️ This command is restricted to interactive channels.", ephemeral=True)
             return
 
         results = self.bot._memory.search_semantic(query, limit=5)
@@ -414,15 +251,25 @@ class DexDiscordBot(commands.Bot):
         self._memory = ContextMemoryEngine()
         self.telemetry = TelemetryManager()
 
-
     async def on_ready(self) -> None:
         """Called when the bot is ready."""
         logger.info(f"✨ Dex Discord Bot is online as {self.user} (ID: {self.user.id})")
-        logger.info(f"📊 Connected to {len(self.guilds)} guilds:")
-        for guild in self.guilds:
-            logger.info(f"   - {guild.name} (ID: {guild.id})")
-        logger.info(f"🛠️ Console Channel: #{self.settings.discord.console_channel}")
-        logger.info(f"📡 Status: Operational")
+        logger.info(f"📊 Connected to {len(self.guilds)} guilds")
+        logger.info(f"📡 Status: Operational (Interactivity enabled server-wide)")
+
+    async def on_message(self, message: discord.Message) -> None:
+        """Handle conversational pings."""
+        if message.author.bot:
+            return
+
+        # Respond if pinged or in an interactive channel
+        if self.user.mentioned_in(message) and self._is_interactive_channel(message.channel):
+            clean_content = message.content.replace(f"<@{self.user.id}>", "").replace(f"<@!{self.user.id}>", "").strip()
+            if clean_content:
+                async with message.channel.typing():
+                    await self._process_dex_request(message, clean_content)
+        
+        await self.process_commands(message)
 
     async def _post_to_channel(self, channel_name: str, embed: "discord.Embed") -> None:
         """Helper to post to a specific channel by name."""
@@ -435,82 +282,116 @@ class DexDiscordBot(commands.Bot):
                     except Exception as e:
                         logger.error(f"Failed to post to {channel_name}: {e}")
 
+    async def _process_dex_request(self, target: discord.Interaction | discord.Message, command: str):
+        """Internal logic to process a task request from any Discord source."""
+        log_discord_event(
+            "command_received",
+            {"command": command, "user_id": target.author.id if isinstance(target, discord.Message) else target.user.id},
+        )
+
+        await self._ensure_agents()
+
+        task = TaskDefinition(
+            id=uuid.uuid4(),
+            user_request=command,
+            context={"source": "discord", "user_id": str(target.author.id if isinstance(target, discord.Message) else target.user.id)},
+        )
+
+        try:
+            plan = await self._planner.plan_task(task)
+            if not plan:
+                err_embed = build_embed(DexEmbedPayload(
+                    title="Dex • Planning Failed",
+                    summary="I couldn't figure out how to handle this request.",
+                    risk_level="low", execution_plan=[], tools_used=[],
+                    latency_ms=None, token_usage=None, verification_status="error"
+                ))
+                if isinstance(target, discord.Interaction): await target.followup.send(embed=err_embed)
+                else: await target.reply(embed=err_embed)
+                return
+
+            risk_report = self._risk_engine.analyze_plan(plan)
+
+            if risk_report.risk_level == "high":
+                self.pending_confirmations[str(task.id)] = PendingPlan(str(task.id), plan, target if isinstance(target, discord.Interaction) else None)
+                embed_payload = build_embed(DexEmbedPayload(
+                    title="Dex • High Risk Action Required",
+                    summary="Please confirm execution of this high-risk task.",
+                    risk_level="high",
+                    execution_plan=[f"{s.order}. {s.description}" for s in plan.steps],
+                    tools_used=list(set(s.tool_name for s in plan.steps)),
+                    latency_ms=None, token_usage=None, verification_status="pending_confirmation"
+                ))
+                if isinstance(target, discord.Interaction): await target.followup.send(embed=embed_payload, view=ConfirmView(self, str(task.id)))
+                else: await target.reply(embed=embed_payload, view=ConfirmView(self, str(task.id)))
+                await self._post_to_channel("priority-feed", embed_payload)
+            else:
+                result = await self._executor.execute_plan(plan)
+                verification = await self._verifier.verify_execution(plan, result)
+                embed_payload = build_embed(DexEmbedPayload(
+                    title="Dex • Task Complete",
+                    summary=verification.summary,
+                    risk_level=risk_report.risk_level,
+                    execution_plan=[f"{s.order}. {s.description}" for s in plan.steps],
+                    tools_used=list(set(s.tool_name for s in plan.steps)),
+                    latency_ms=result.latency_ms, token_usage=str(result.token_usage),
+                    verification_status="verified" if verification.success else "failed"
+                ))
+                if isinstance(target, discord.Interaction): await target.followup.send(embed=embed_payload)
+                else: await target.reply(embed=embed_payload)
+                await self._post_to_channel("timeline", embed_payload)
+
+        except Exception as e:
+            logger.error(f"Error processing request: {e}")
+
     async def setup_hook(self) -> None:
-        # Load Cogs
         await self.add_cog(DexCog(self))
         await self.add_cog(MemoryCog(self))
-
-        # Sync commands
         guild_id = self.settings.discord.guild_id
         if guild_id:
             await self.tree.sync(guild=discord.Object(id=guild_id))
-            logger.info(f"Synced slash commands to guild {guild_id}")
         else:
             await self.tree.sync()
-            logger.info("Synced slash commands globally")
 
     async def close(self) -> None:
-        if self._planner:
-            await self._planner.shutdown()
-        if self._executor:
-            await self._executor.shutdown()
-        if self._verifier:
-            await self._verifier.shutdown()
+        if self._planner: await self._planner.shutdown()
+        if self._executor: await self._executor.shutdown()
+        if self._verifier: await self._verifier.shutdown()
         await super().close()
 
     async def _ensure_agents(self) -> None:
-        if self._bus is not None:
-            return
-
+        if self._bus is not None: return
         self._bus = await get_bus()
         registry = get_tool_registry()
         tools = [
-            ShellCommandTool(),
-            FileReadTool(),
-            FileWriteTool(),
-            NoteCreateTool(),
-            NoteListTool(),
-            ReminderSetTool(),
-            ReminderListTool(),
-            EmailComposeTool(),
-            BrowserOpenTool(),
-            AppLaunchTool(),
-            GenericChatTool(),
+            ShellCommandTool(), FileReadTool(), FileWriteTool(), NoteCreateTool(), NoteListTool(),
+            ReminderSetTool(), ReminderListTool(), EmailComposeTool(), BrowserOpenTool(), AppLaunchTool(),
+            GenericChatTool(), TODOTool()
         ]
-        for tool in tools:
-            try:
-                registry.register(tool)
-            except ValueError:
-                pass
+        for t in tools:
+            try: registry.register(t)
+            except ValueError: pass
 
-        self._planner = PlannerAgent()
-        self._executor = ExecutorAgent()
-        self._verifier = VerifierAgent()
-
+        self._planner, self._executor, self._verifier = PlannerAgent(), ExecutorAgent(), VerifierAgent()
         await self._planner.initialize(self._bus)
         await self._executor.initialize(self._bus)
         await self._verifier.initialize(self._bus)
 
-    def _is_console_channel(self, interaction: "discord.Interaction") -> bool:
-        channel = interaction.channel
-        if channel is None:
-            return False
-        
-        # Trim target channel name from settings to handle trailing spaces in .env
-        target_channel = self.settings.discord.console_channel.strip()
-        return getattr(channel, "name", None) == target_channel
+    def _is_interactive_channel(self, channel: discord.abc.Messageable) -> bool:
+        if not hasattr(channel, "name"): return False
+        name = channel.name.strip()
+        allowed = [
+            self.settings.discord.console_channel.strip(),
+            self.settings.discord.reminders_channel.strip(),
+            self.settings.discord.priority_feed_channel.strip(),
+            "general"
+        ]
+        return name in allowed
 
 
 def run_discord_bot() -> None:
-    """Run the Dex Discord bot."""
-    if discord is None:
-        logger.error("discord.py is not installed. Install with `pip install discord.py`.")
-        return
-
     settings = get_settings()
-    if not settings.discord.bot_token:
-        raise RuntimeError("DISCORD_BOT_TOKEN is required to run the bot.")
-
+    if not settings.discord.bot_token: raise RuntimeError("DISCORD_BOT_TOKEN is required.")
     bot = DexDiscordBot()
     bot.run(settings.discord.bot_token)
 

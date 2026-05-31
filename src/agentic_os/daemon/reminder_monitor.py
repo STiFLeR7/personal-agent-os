@@ -13,7 +13,9 @@ from agentic_os.notifications.desktop import DesktopNotifier
 from agentic_os.notifications.email_notifier import EmailNotifier
 from agentic_os.notifications.whatsapp_notifier import WhatsAppNotifier
 from agentic_os.notifications.discord import DiscordNotifier
+from agentic_os.notifications.discord_bot_notifier import DiscordBotNotifier
 from agentic_os.notifications.resend_notifier import ResendNotifier
+from agentic_os.core.telemetry import TelemetryManager
 
 # Remove the old logging.getLogger
 # logger = logging.getLogger(__name__)
@@ -42,11 +44,13 @@ class ReminderMonitor:
         self.email_notifier = EmailNotifier()
         self.whatsapp_notifier = WhatsAppNotifier()
         self.discord_notifier = DiscordNotifier()
+        self.discord_bot_notifier = DiscordBotNotifier()
         self.resend_notifier = ResendNotifier()
         
         # Track sent notifications
         self.sent_notifications = set()
         self.last_daily_summary = None
+        self.telemetry = TelemetryManager()
     
     async def start(self):
         """Start the reminder monitor daemon."""
@@ -113,34 +117,171 @@ class ReminderMonitor:
                 self.last_daily_summary = today_date
 
     async def _send_daily_summary(self):
-        """Generate and send the catchy daily summary email."""
+        """Generate and send a dynamic LLM-generated daily summary."""
         from agentic_os.notifications.base import Notification
+        import google.generativeai as genai
         
-        summary_title = "Morning Intel Digest"
-        summary_msg = """
-        <b>SYSTEM STATUS</b>: All nodes operational.
-        <b>NODES</b>: Discord Bot, Background Daemon, Cognitive Core.
+        logger.info("🌅 Generating Dynamic Daily Summary...")
         
-        <b>YOUR DAY AT A GLANCE</b>:
-        - ⚡ Cognitive engine is primed and ready.
-        - 📅 Checking reminders for the day...
-        - 📧 Mail inbox integration sync complete.
+        # 1. Gather Data: Reminders & TODOs
+        active_reminders = []
+        pending_todos = []
+        try:
+            # Reminders
+            if self.reminders_file.exists():
+                with open(self.reminders_file, "r") as f:
+                    all_reminders = json.load(f)
+                
+                now = datetime.now(timezone.utc)
+                today = now.date()
+                for r in all_reminders:
+                    if r.get("is_active"):
+                        sched = datetime.fromisoformat(r["scheduled_time"])
+                        if sched.date() == today:
+                            active_reminders.append(f"- {r['message']} (at {sched.strftime('%H:%M')})")
+            
+            # TODOs
+            todo_file = self.settings.data_dir / "todos.json"
+            if todo_file.exists():
+                all_todos = json.loads(todo_file.read_text())
+                pending_todos = [f"- {t['task']} ({t['priority']} priority)" for t in all_todos if t.get("status") == "pending"]
+        except Exception as e:
+            logger.error(f"Failed to gather reminders/todos for summary: {e}")
+
+        # 2. Gather Data: Telemetry
+        metrics = self.telemetry.get_metrics_summary()
+        sys_status = "All nodes operational." if metrics.get("success_rate", 1.0) > 0.8 else "Some nodes experiencing friction."
         
-        Have a productive morning!
-        """
+        # 3. LLM Generation
+        summary_msg = None
         
+        # Try Gemini First
+        if self.settings.llm.provider == "google" and self.settings.llm.api_key:
+            try:
+                genai.configure(api_key=self.settings.llm.api_key)
+                # Explicitly use gemini-2.0-flash for best free-tier performance
+                model_name = self.settings.llm.model_name or "gemini-2.0-flash"
+                model = genai.GenerativeModel(model_name)
+                
+                reminders_text = "\n".join(active_reminders) if active_reminders else "No specific reminders for today."
+                todos_text = "\n".join(pending_todos) if pending_todos else "No pending TODOs."
+                
+                prompt = f"""
+                You are Dex, a high-performance personal AI operator. 
+                Write a catchy, professional, and concise body for your "Morning Intel Digest".
+                
+                IMPORTANT: Do NOT include the words "Morning Intel Digest" or any title at the very beginning, as it will be placed in a separate title field. Start directly with the greeting or the status update.
+                
+                SYSTEM CONTEXT:
+                - Status: {sys_status}
+                
+                - Active Reminders Today:
+                {reminders_text}
+                
+                - Pending TODOs:
+                {todos_text}
+                
+                - System Metrics:
+                  Total Tasks: {metrics.get('total_tasks', 0)}
+                  Success Rate: {metrics.get('success_rate', 0):.1%}
+                
+                FORMATTING RULES:
+                - Use professional but engaging tone.
+                - Use clean Markdown (no HTML tags like <b>).
+                - Keep it under 200 words.
+                - Include a "YOUR DAY AT A GLANCE" section.
+                - Mention specifically the TODOs that need attention.
+                """
+                
+                response = await model.generate_content_async(prompt)
+                summary_msg = response.text.strip()
+                logger.info("✅ Summary generated via Gemini.")
+            except Exception as e:
+                logger.error(f"Gemini summary generation failed: {e}")
+
+        # Try Groq as fallback or alternative
+        if not summary_msg and self.settings.llm.groq_api_key:
+            try:
+                import aiohttp
+                logger.info("尝试使用 Groq 引擎生成摘要...")
+                
+                reminders_text = "\n".join(active_reminders) if active_reminders else "No specific reminders for today."
+                todos_text = "\n".join(pending_todos) if pending_todos else "No pending TODOs."
+                
+                prompt = f"""
+                You are Dex, a high-performance personal AI operator. 
+                Write a catchy, professional, and concise body for your "Morning Intel Digest".
+                
+                IMPORTANT: Do NOT include the words "Morning Intel Digest" or any title at the very beginning, as it will be placed in a separate title field. Start directly with the greeting or the status update.
+                
+                SYSTEM CONTEXT:
+                - Status: {sys_status}
+                - Active Reminders Today: {reminders_text}
+                - Pending TODOs: {todos_text}
+                
+                FORMATTING RULES:
+                - Use professional but engaging tone.
+                - Use clean Markdown (no HTML tags like <b>).
+                - Keep it under 200 words.
+                - Include a "YOUR DAY AT A GLANCE" section.
+                """
+                
+                headers = {
+                    "Authorization": f"Bearer {self.settings.llm.groq_api_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7
+                }
+                
+                async with aiohttp.ClientSession() as session:
+                    async with session.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            summary_msg = data["choices"][0]["message"]["content"].strip()
+                            logger.info("✅ Summary generated via Groq (Llama 3.3).")
+                        else:
+                            err = await resp.text()
+                            logger.error(f"Groq API failed: {resp.status} - {err}")
+            except Exception as e:
+                logger.error(f"Groq summary generation failed: {e}")
+
+        # Fallback if ALL LLMs fail
+        if not summary_msg:
+            reminders_text = "\n".join(active_reminders) if active_reminders else "- No reminders scheduled."
+            summary_msg = f"""
+**SYSTEM STATUS**: {sys_status}
+**NODES**: Discord Bot, Background Daemon, Cognitive Core.
+
+**YOUR DAY AT A GLANCE**:
+{reminders_text}
+- ⚡ Cognitive engine is primed and ready.
+- 📧 Mail inbox integration sync complete.
+
+Have a productive morning!
+            """
+
         notification = Notification(
-            title=summary_title,
+            title="Morning Intel Digest",
             message=summary_msg,
             priority="normal",
-            tag="daily_summary"
+            tag="reminders" # Targets #reminders channel
         )
         
-        # Send to Discord, Email, and Resend
+        # 4. Delivery: Multi-channel (Discord Bot / Hermes-style)
         logger.info("Attempting to send Daily Summary to all channels...")
-        await self.discord_notifier.send(notification)
+        
+        # Use our new Hermes-style bot notifier first
+        sent_via_bot = await self.discord_bot_notifier.send(notification)
+        if not sent_via_bot:
+            # Fallback to old webhook if bot token method fails
+            await self.discord_notifier.send(notification)
+            
         await self.email_notifier.send(notification)
         await self.resend_notifier.send(notification)
+        
         logger.info("Daily summary cycle complete.")
 
     

@@ -47,6 +47,10 @@ class LLMConfig(BaseModel):
         default=None, 
         validation_alias=AliasChoices("LLM_API_KEY", "api_key", "GEMINI_API_KEY")
     )
+    groq_api_key: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("GROQ_API_KEY", "groq_api_key")
+    )
     discord_webhook_url: Optional[str] = Field(
         default=None, 
         validation_alias=AliasChoices("LLM_DISCORD_WEBHOOK_URL", "discord_webhook_url")
@@ -269,6 +273,9 @@ def get_settings() -> Settings:
         # Manual Overrides for Reliability (ensures .env variables are picked up)
         if not _settings.llm.api_key:
             _settings.llm.api_key = os.environ.get("LLM_API_KEY") or os.environ.get("GEMINI_API_KEY")
+        
+        if not _settings.llm.groq_api_key:
+            _settings.llm.groq_api_key = os.environ.get("GROQ_API_KEY")
         
         if not _settings.llm.provider or _settings.llm.provider == "ollama":
             # If GEMINI_API_KEY is present, default provider to google

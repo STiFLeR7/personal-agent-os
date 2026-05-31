@@ -200,12 +200,18 @@ async def get_active_tasks():
 
 # Serve static files from the dashboard
 if DASHBOARD_DIST.exists():
-    app.mount("/assets", StaticFiles(directory=DASHBOARD_DIST / "assets"), name="assets")
+    app.mount("/dashboard-assets", StaticFiles(directory=DASHBOARD_DIST / "assets"), name="dashboard-assets")
 
+# Serve project-level branding assets
+PROJECT_ASSETS = ROOT_DIR / "assets"
+if PROJECT_ASSETS.exists():
+    app.mount("/assets", StaticFiles(directory=PROJECT_ASSETS), name="assets")
+
+if DASHBOARD_DIST.exists():
     @app.get("/{full_path:path}")
     async def serve_dashboard(full_path: str):
         # If it's an API route or asset, let it be handled by those
-        if full_path.startswith("api/") or full_path.startswith("assets/"):
+        if full_path.startswith("api/") or full_path.startswith("assets/") or full_path.startswith("dashboard-assets/"):
             raise HTTPException(status_code=404)
         
         index_file = DASHBOARD_DIST / "index.html"

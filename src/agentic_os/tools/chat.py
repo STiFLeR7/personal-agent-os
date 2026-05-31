@@ -50,18 +50,43 @@ class GenericChatTool(Tool):
             return ChatOutput(success=False, error="Query cannot be empty", response="")
 
         try:
+            # 1. Try Gemini
             if self.settings.llm.provider == "google" and self.settings.llm.api_key:
                 import google.generativeai as genai
                 genai.configure(api_key=self.settings.llm.api_key)
                 model = genai.GenerativeModel(self.settings.llm.model_name or "gemini-2.0-flash")
                 response = await model.generate_content_async(query)
                 return ChatOutput(success=True, response=response.text, data={"response": response.text})
-            else:
-                return ChatOutput(
-                    success=True, 
-                    response="I am a local agent. LLM provider is not fully configured, but I hear you!",
-                    data={"response": "LLM provider not configured. I hear you!"}
-                )
+            
+            # 2. Try Groq (as alternative or if key is provided)
+            elif self.settings.llm.groq_api_key:
+                import aiohttp
+                headers = {
+                    "Authorization": f"Bearer {self.settings.llm.groq_api_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [{"role": "user", "content": query}],
+                    "temperature": 0.7
+                }
+                
+                async with aiohttp.ClientSession() as session:
+                    async with session.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            response_text = data["choices"][0]["message"]["content"].strip()
+                            return ChatOutput(success=True, response=response_text, data={"response": response_text})
+                        else:
+                            err_text = await resp.text()
+                            logger.error(f"Groq Chat failed: {resp.status} - {err_text}")
+                
+            # 3. No LLM configured
+            return ChatOutput(
+                success=True, 
+                response="I am a local agent. LLM provider is not fully configured, but I hear you!",
+                data={"response": "LLM provider not configured. I hear you!"}
+            )
         except Exception as e:
             logger.error(f"ChatTool failed: {e}")
             return ChatOutput(success=False, error=str(e), response="")

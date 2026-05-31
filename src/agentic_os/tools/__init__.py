@@ -15,6 +15,7 @@ from agentic_os.tools.reminders import ReminderSetTool, ReminderListTool
 from agentic_os.tools.email_browser import EmailComposeTool, BrowserOpenTool
 from agentic_os.tools.app_tools import AppLaunchTool
 from agentic_os.tools.chat import GenericChatTool
+from agentic_os.tools.todos import TODOTool
 from agentic_os.tools.time_utils import (
     TimeTool,
     get_current_time,
@@ -45,6 +46,7 @@ __all__ = [
     "BrowserOpenTool",
     "AppLaunchTool",
     "GenericChatTool",
+    "TODOTool",
     "TimeTool",
     # Time utilities
     "get_current_time",
