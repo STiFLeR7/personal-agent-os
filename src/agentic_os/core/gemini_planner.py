@@ -59,12 +59,8 @@ class GeminiPlanner(PlanningEngine):
         max_depth: int = 5,
     ) -> Optional[ExecutionPlan]:
         """
-        Generate a plan using Gemini.
+        Generate a plan using Gemini with automatic Groq fallback.
         """
-        if not self.model:
-            logger.error("Gemini model not initialized. Check LLM_API_KEY and LLM_PROVIDER.")
-            return None
-
         # Fetch relevant context from memory
         context_entries = self.memory_engine.search_semantic(task.user_request, limit=3)
         context_text = "\n".join([f"- {m.content}" for m in context_entries])
@@ -72,47 +68,82 @@ class GeminiPlanner(PlanningEngine):
 
         prompt = self._build_planning_prompt(task, available_tools, context_text, session_context)
         
-        try:
-            response = await self.model.generate_content_async(prompt)
-            raw_output = json.loads(response.text)
+        # Helper for Groq Fallback
+        async def _try_groq_planning(reason: str):
+            if not self.settings.llm.groq_api_key:
+                logger.error(f"Gemini planning failed ({reason}) and Groq not configured.")
+                return None
             
-            # Validate output against schema
-            plan_data = GeminiPlanOutput(**raw_output)
+            logger.info(f"Gemini planning failed ({reason}), falling back to Groq...")
+            import aiohttp
+            headers = {
+                "Authorization": f"Bearer {self.settings.llm.groq_api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.1 # Low temperature for planning
+            }
             
-            # Convert steps to PlanStep objects
-            steps = []
-            for i, step_data in enumerate(plan_data.steps):
-                steps.append(PlanStep(
-                    id=uuid4(),
-                    order=i + 1,
-                    description=step_data.get("description", f"Step {i+1}"),
-                    tool_name=step_data["tool_name"],
-                    tool_args=step_data.get("tool_args", {}),
-                    depends_on=[] # Simple sequential for now
-                )
-            )
+            async with aiohttp.ClientSession() as session:
+                async with session.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        raw_output = json.loads(data["choices"][0]["message"]["content"])
+                        return self._process_plan_output(raw_output, task)
+                    else:
+                        err_text = await resp.text()
+                        logger.error(f"Groq planning fallback failed: {err_text}")
+                        return None
 
-            # Create ExecutionPlan
-            plan = ExecutionPlan(
+        # 1. Try Gemini
+        if self.model:
+            try:
+                response = await self.model.generate_content_async(prompt)
+                raw_output = json.loads(response.text)
+                return self._process_plan_output(raw_output, task)
+            except Exception as e:
+                return await _try_groq_planning(str(e))
+        else:
+            # 2. Try Groq directly if Gemini model not initialized
+            return await _try_groq_planning("Gemini model not initialized")
+
+    def _process_plan_output(self, raw_output: Dict[str, Any], task: TaskDefinition) -> ExecutionPlan:
+        """Process raw JSON output into an ExecutionPlan object."""
+        # Validate output against schema
+        plan_data = GeminiPlanOutput(**raw_output)
+        
+        # Convert steps to PlanStep objects
+        steps = []
+        for i, step_data in enumerate(plan_data.steps):
+            steps.append(PlanStep(
                 id=uuid4(),
-                task_id=task.id,
-                steps=steps,
-                reasoning=plan_data.reasoning,
-                confidence=plan_data.confidence,
-                created_by="gemini-planner"
+                order=i + 1,
+                description=step_data.get("description", f"Step {i+1}"),
+                tool_name=step_data["tool_name"],
+                tool_args=step_data.get("tool_args", {}),
+                depends_on=[] # Simple sequential for now
             )
+        )
 
-            # Evaluate Risk
-            risk_score = self.risk_engine.evaluate_plan([s.model_dump() for s in steps])
-            plan.metadata["risk_score"] = risk_score.model_dump()
-            
-            logger.info(f"Gemini generated plan with {len(steps)} steps. Risk: {risk_score.level}")
-            
-            return plan
+        # Create ExecutionPlan
+        plan = ExecutionPlan(
+            id=uuid4(),
+            task_id=task.id,
+            steps=steps,
+            reasoning=plan_data.reasoning,
+            confidence=plan_data.confidence,
+            created_by="dual-core-planner"
+        )
 
-        except Exception as e:
-            logger.error(f"Gemini planning failed: {e}")
-            return None
+        # Evaluate Risk
+        risk_score = self.risk_engine.evaluate_plan([s.model_dump() for s in steps])
+        plan.metadata["risk_score"] = risk_score.model_dump()
+        
+        logger.info(f"Generated plan with {len(steps)} steps. Risk: {risk_score.level}")
+        return plan
 
     def _build_planning_prompt(
         self, 
