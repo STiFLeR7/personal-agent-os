@@ -86,7 +86,7 @@ class DiscordBotNotifier(NotificationHandler):
         # Build thumbnail URL if RENDER_EXTERNAL_URL is set
         thumbnail_url = None
         if self.settings.render_external_url:
-            thumbnail_url = f"{self.settings.render_external_url.rstrip('/')}/assets/dex-icon.png"
+            thumbnail_url = f"{self.settings.render_external_url.rstrip('/')}/assets/dex-icon.svg"
 
         payload = {
             "embeds": [
